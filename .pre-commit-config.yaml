@@ -1,37 +1,30 @@
 repos:
-  # 1. Базовые хуки pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      - id: trailing-whitespace # Удаляет пробелы в конце строк
-      - id: end-of-file-fixer # Добавляет пустую строку в конец файла
-      - id: check-yaml # Проверяет синтаксис YAML файлов
-      - id: check-added-large-files # Запрещает коммитить большие файлы (защита от коммита моделей/датасетов!)
-        exclude: ^poetry\.lock$
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
 
-  # 2. Black (форматирование кода)
   - repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
       - id: black
-        language_version: python3.12 # Укажите вашу версию Python
+        # language_version удален, будет использоваться системный Python (3.12)
 
-  # 3. isort (сортировка импортов)
-  - repo: https://github.com/PyCQA/isort
+  - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
 
-  # 4. Flake8 (линтер, поиск ошибок и нарушение PEP8)
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.0
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
     hooks:
       - id: flake8
-        additional_dependencies: [flake8-bugbear] # Опционально: расширяет проверки
 
-  # 5. Prettier (форматирование не-Python файлов: yaml, md, json и т.д.)
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
+    rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        types_or: [yaml, markdown, json] # Применяем только к нужным типам файлов

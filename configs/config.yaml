@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+  - data: price_tags
+  - model: yolov8n
+  - train: default
+
+hydra:
+  run:
+    dir: outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d_%H-%M-%S}
+  job:
+    chdir: true
+
+project:
+  name: "price_tag_scanner"
+  mlflow_uri: "http://127.0.0.1:8080"
+  experiment_name: "price_tag_detection"
+
+paths:
+  root_dir: ${oc.env:PROJECT_ROOT, .}
+  data_dir: ${paths.root_dir}/data/price_tags
+  configs_dir: ${paths.root_dir}/configs
+  logs_dir: ${paths.root_dir}/logs
+  models_dir: ${paths.root_dir}/models

@@ -1,0 +1,9 @@
+data_path: ${paths.root_dir}/data/price_tags
+data_yaml: ${data.data_path}/data.yaml
+img_size: 640
+batch_size: 16
+workers: 4
+
+classes:
+  nc: 1
+  names: ["price_tag"]

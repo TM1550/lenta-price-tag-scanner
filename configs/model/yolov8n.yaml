@@ -1,0 +1,7 @@
+model_name: "yolov8n.pt"
+pretrained: true
+
+architecture:
+  backbone: "CSPDarknet"
+  neck: "PAN-FPN"
+  head: "YOLO"
