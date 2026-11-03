@@ -1,0 +1,12 @@
+Laptop CPU verification, 2026-11-03
+Windows; AMD integrated graphics; 16 GB RAM; CPU only.
+Inputs restored into an independent no-SCM DVC checkout from laptop-temp.
+Outbound socket connections blocked during the full video run; 3 connection attempts denied.
+Full 43_15.mp4: 100 sampled frames, 1846 detections, 45 track segments.
+CSV: 45 rows, 29 columns; 95/1035 nonempty content cells = 0.0917874396.
+Coverage is NOT recognition accuracy.
+Runtime: 434.511 seconds.
+Explicit local PaddleOCR detector/recognizer directories were loaded.
+25 unit tests passed; pip check: no broken requirements.
+Qwen download postponed by user; no complete Qwen DVC snapshot, no Qwen inference verified.
+No server connection used. New changes are local; no commit or push performed.

@@ -3,6 +3,7 @@ targets:
   - data/efficient_user_20261102.dvc
   - data/yolo_original_4fold.dvc
   - data/inference_assets.dvc
+  - data/runtime_assets.dvc
 url: https://drive.google.com/drive/folders/1_UbQ7x4MK9fZjA-9DqJY_A8nedsg9KMy
 output: data/raw_public
 folder: true

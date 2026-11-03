@@ -86,6 +86,14 @@ class TextReader:
             os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(resolve(cfg.paddle_cache)))
             from paddleocr import PaddleOCR
 
+            local_models = {}
+            for option in ("text_detection_model_dir", "text_recognition_model_dir"):
+                configured = cfg.get(option)
+                if configured:
+                    directory = resolve(configured)
+                    if not directory.is_dir():
+                        raise FileNotFoundError(directory)
+                    local_models[option] = str(directory)
             self.model = PaddleOCR(
                 text_detection_model_name="PP-OCRv5_mobile_det",
                 text_recognition_model_name=cfg.paddle_rec,
@@ -95,6 +103,7 @@ class TextReader:
                 device="cpu",
                 enable_mkldnn=False,
                 cpu_threads=cfg.cpu_threads,
+                **local_models,
             )
         elif cfg.backend in ("qwen", "paddlevl"):
             from transformers import (
@@ -109,6 +118,7 @@ class TextReader:
                 if cfg.backend == "paddlevl"
                 else {"revision": cfg.vlm_revision}
             )
+            extra["local_files_only"] = cfg.get("local_files_only", False)
             self.processor = AutoProcessor.from_pretrained(
                 model_path, min_pixels=cfg.min_pixels, max_pixels=cfg.max_pixels, **extra
             )

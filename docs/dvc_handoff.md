@@ -2,6 +2,8 @@
 
 03.11.2026 контрольное восстановление всех пяти указателей в новую no-SCM
 папку прошло: 2687 DVC-объектов получено, статус данных — up to date.
+Позднее добавлен и отдельно восстановлен `data/runtime_assets.dvc` для полного
+CPU-пайплайна: видео, CSV, OCR-разметка и локальные Paddle-веса. Итого шесть указателей.
 
 Локальный remote `laptop-temp`:
 `C:/Users/tsire/Downloads/MLOPS_codex/server_results/dvc-store`.
@@ -19,7 +21,7 @@ GitHub содержит только указатели `.dvc`; `git push` не 
 $env:DVC_NO_ANALYTICS = '1'
 $env:DVC_SITE_CACHE_DIR = 'C:/Users/tsire/Downloads/MLOPS_codex/server_results/dvc-site-cache'
 $dvc = '../.venv-pseudolabel/Scripts/dvc.exe'
-& $dvc pull -r laptop-temp data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc
+& $dvc pull -r laptop-temp data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc data/runtime_assets.dvc
 ```
 
 При переходе на remote сокомандника не удаляйте локальное хранилище, пока
@@ -29,7 +31,7 @@ $dvc = '../.venv-pseudolabel/Scripts/dvc.exe'
 # Сначала настроить remote team с адресом сокомандника.
 & $dvc remote add team '<адрес хранилища>'
 # Пароли/токены задавать только локально, по инструкции для типа хранилища.
-& $dvc push -r team data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc
+& $dvc push -r team data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc data/runtime_assets.dvc
 & $dvc config --local core.remote team
 ```
 

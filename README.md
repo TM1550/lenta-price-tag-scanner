@@ -197,6 +197,10 @@ poetry run price-scanner export format=tensorrt output=artifacts/efficient_trt
 
 ## Infer
 
+Для этого ноутбука проверен [CPU-профиль без сервера](docs/laptop_run.md):
+`python -m lenta_price_tag_scanner.commands infer-cpu output=data/my_laptop_run`.
+Он использует полное видео и локальные OCR-веса из DVC; Qwen в этом режиме отключён.
+
 Новая папка результата обязательна, существующие результаты не перезаписываются.
 Короткий DVC-пример, CPU:
 

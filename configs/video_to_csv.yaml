@@ -5,7 +5,7 @@ videos: data/inference_assets/videos
 pattern: "*.mp4"
 yolo_weights: data/inference_assets/price_tag.pt
 pull_dvc: true
-dvc_targets: [data/inference_assets.dvc]
+dvc_targets: [data/inference_assets.dvc, data/runtime_assets.dvc]
 output: data/video_csv
 resume_tracks: null
 stride: 3
@@ -31,6 +31,9 @@ ocr:
   backend: paddle
   device: cpu
   preprocess: none
+  paddle_cache: data/runtime_assets/paddle
+  text_detection_model_dir: data/runtime_assets/paddle/official_models/PP-OCRv5_mobile_det
+  text_recognition_model_dir: data/runtime_assets/paddle/official_models/eslav_PP-OCRv5_mobile_rec
 ocr_confidence: 0.5
 price_template_field: price_card
 vlm_fallback: false

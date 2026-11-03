@@ -1,0 +1,18 @@
+defaults:
+  - video_to_csv
+  - _self_
+videos: data/runtime_assets/videos
+pattern: "43_15.mp4"
+output: data/laptop_video_csv
+dvc_targets:
+  - data/inference_assets.dvc
+  - data/runtime_assets.dvc
+detector_device: cpu
+top_k: 2
+vlm_fallback: false
+ocr:
+  backend: paddle
+  device: cpu
+  paddle_cache: data/runtime_assets/paddle
+  text_detection_model_dir: data/runtime_assets/paddle/official_models/PP-OCRv5_mobile_det
+  text_recognition_model_dir: data/runtime_assets/paddle/official_models/eslav_PP-OCRv5_mobile_rec

@@ -8,7 +8,10 @@ from hydra import compose, initialize_config_module
 
 @click.command(context_settings={"ignore_unknown_options": True})
 @click.argument(
-    "command", type=click.Choice(["train", "infer", "ocr", "export", "download", "serve-package"])
+    "command",
+    type=click.Choice(
+        ["train", "infer", "infer-cpu", "ocr", "export", "download", "serve-package"]
+    ),
 )
 @click.argument("overrides", nargs=-1, type=click.UNPROCESSED)
 @click.option("--show-config", is_flag=True, help="Validate and print resolved configuration only.")
@@ -16,6 +19,7 @@ def main(command, overrides, show_config):
     routes = {
         "train": ("train_oof", "train_oof"),
         "infer": ("video_to_csv", "video_to_csv"),
+        "infer-cpu": ("video_to_csv", "laptop_cpu"),
         "ocr": ("text_prototype", "text_prototype"),
         "export": ("export_model", "export"),
         "download": ("download", "download"),

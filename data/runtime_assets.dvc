@@ -1,0 +1,6 @@
+outs:
+- md5: c071caf9b01e125218927c09769e5b09.dir
+  size: 520913029
+  nfiles: 636
+  hash: md5
+  path: runtime_assets

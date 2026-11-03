@@ -1,0 +1,59 @@
+# Запуск на ноутбуке без сервера
+
+Проверено 03.11.2026 на Windows, AMD integrated graphics, 16 ГБ RAM.
+Рабочий режим этого ноутбука — YOLO + трекинг + PaddleOCR CPU + QR/EAN + каталог → CSV.
+Qwen в этот CPU-прогон не входил: NVIDIA/CUDA нет, а текущая реализация
+Qwen4B CPU использует float32 и не подходит для доступных 16 ГБ RAM.
+Это ограничение аппаратуры/реализации, не зависимость от удалённого сервера.
+По решению пользователя загрузка Qwen отложена. Полных весов Qwen в DVC пока
+нет, поэтому утверждение «все модели доступны офлайн» относится только к
+проверенному CPU-пайплайну. Незавершённая загрузка сохранена отдельно в
+`../server_results/qwen_download_partial`; это не готовая модель.
+
+## Проверенный результат
+
+Полное видео `43_15.mp4`: 45 строк, 29 столбцов, 434.51 секунды.
+Заполнено 95/1035 содержательных полей (9.1787%). Это coverage, не точность.
+Результаты: `data/laptop_cpu_verified/submission.csv`, `review.html`, кропы и детали.
+Входы взяты из отдельной no-SCM папки, восстановленной через DVC.
+В тестовом процессе исходящие socket-соединения были заблокированы;
+три попытки соединений отклонены, пайплайн успешно завершился без сетевого ввода.
+
+## Данные и модели
+
+- `data/inference_assets.dvc`: исходная YOLO, обученный EfficientNet, каталог, короткое видео.
+- `data/runtime_assets.dvc`: пять полных видео, их эталонные CSV, OCR-разметка,
+  локальные веса PP-OCRv5 mobile detection и eslav recognition.
+- `data/efficient_user_20261102.dvc`, `data/yolo_original_4fold.dvc`,
+  `data/pseudo_teacher_v1.dvc`: обучающие снимки.
+- `data/server_backup_20261103.tar.gz.dvc`: остальные обученные fold-checkpoint,
+  результаты экспериментов и серверные исходники в архиве.
+
+Локальный DVC remote — `laptop-temp`. Общедоступным он не является.
+На этом ноутбуке доступ к удалённому серверу для pull не требуется.
+
+## Команды PowerShell
+
+Из корня `Design_ML_system`:
+
+```powershell
+$python = '../.venv-pseudolabel/Scripts/python.exe'
+$env:DVC_NO_ANALYTICS = '1'
+$env:DVC_SITE_CACHE_DIR = "$PWD/../server_results/dvc-site-cache"
+$env:YOLO_CONFIG_DIR = "$PWD/data/laptop_runtime/ultralytics"
+$env:PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK = 'True'
+
+& $python -m dvc pull -r laptop-temp data/inference_assets.dvc data/runtime_assets.dvc
+& $python -m lenta_price_tag_scanner.commands infer-cpu output=data/my_laptop_run
+& $python -m scripts.review_video_csv data/my_laptop_run
+```
+
+Выбирайте новую выходную папку на каждый запуск. По умолчанию профиль проверяет
+полное `43_15.mp4`; для всех видео добавьте `pattern=*.mp4`.
+Основной `infer` тоже использует локальные Paddle-веса после DVC pull.
+
+Окружение `.venv-pseudolabel` установлено отдельно от серверного Poetry-окружения:
+CPU Torch 2.15.0+cpu, PaddlePaddle 3.2.2, PaddleOCR 3.3.2, PaddleX 3.3.13.
+Точные установленные версии сохранены в `../server_results/laptop_cpu_environment.txt`.
+Не выдаём этот прогон за проверку установки из CUDA Poetry lock на Windows.
+Для новой машины сначала нужны зависимости и доступ к DVC-хранилищу.
