@@ -1,0 +1,45 @@
+defaults:
+  - text_prototype@ocr
+  - _self_
+videos: data/inference_assets/videos
+pattern: "*.mp4"
+yolo_weights: data/inference_assets/price_tag.pt
+pull_dvc: true
+dvc_targets: [data/inference_assets.dvc]
+output: data/video_csv
+resume_tracks: null
+stride: 3
+tracker: botsort.yaml
+detection_only: false
+max_frames: 0
+top_k: 3
+track_max_gap_ms: 1000
+track_max_span_ms: 10000
+track_min_iou: 0.15
+imgsz: 1280
+detector_conf: 0.25
+detector_device: cpu
+efficient_weights: null
+efficient_threshold: 0.5
+rotation_ccw: 90
+quality:
+  min_side: 40
+  min_sharpness: 15.0
+  min_contrast: 12.0
+  max_flat_fraction: 0.98
+ocr:
+  backend: paddle
+  device: cpu
+  preprocess: none
+ocr_confidence: 0.5
+price_template_field: price_card
+vlm_fallback: false
+vlm_backend: qwen
+vlm_name_override: false
+vlm_limit: 100
+catalogue_csv: data/inference_assets/db_hack.csv
+catalogue_db: data/catalogue.sqlite
+encoding: cp1251
+hydra:
+  job:
+    chdir: false

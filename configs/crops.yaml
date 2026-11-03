@@ -1,0 +1,20 @@
+videos: ../data
+pattern: "*.mp4"
+yolo_weights: ../lenta-price-tag-scanner/base_pipeline/price_tag.pt
+efficient_weights: ../lenta-price-tag-scanner/base_pipeline/efficient.pth
+output: data/efficient_candidates
+stride: 15
+max_frames: 0
+min_side: 24
+conf: 0.25
+iou: 0.5
+imgsz: 1280
+device: cpu
+crop_size: 320
+legacy_bgr: true
+invert_probability: true
+low: 0.2
+high: 0.8
+hydra:
+  job:
+    chdir: false

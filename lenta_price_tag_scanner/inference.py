@@ -7,8 +7,6 @@ from typing import Union
 from omegaconf import DictConfig
 from ultralytics import YOLO
 
-logger = logging.getLogger(__name__)
-
 
 def load_model(cfg: DictConfig) -> YOLO:
     """Load trained model.
@@ -23,16 +21,17 @@ def load_model(cfg: DictConfig) -> YOLO:
 
     best_model = models_dir / "best.pt"
     if best_model.exists():
-        logger.info(f"Loading best model from {best_model}")
+        logging.getLogger(__name__).info(f"Loading best model from {best_model}")
         return YOLO(str(best_model))
 
     onnx_model = models_dir / "exported" / "best.onnx"
     if onnx_model.exists():
-        logger.info(f"Loading ONNX model from {onnx_model}")
+        logging.getLogger(__name__).info(f"Loading ONNX model from {onnx_model}")
         return YOLO(str(onnx_model))
 
-    logger.warning("No trained model found, using base model")
-    return YOLO(cfg.model.model_name)
+    raise FileNotFoundError(
+        "No trained checkpoint found; refusing to substitute an untrained detector"
+    )
 
 
 def run_inference(cfg: DictConfig, source: Union[str, Path, int] = 0) -> None:
@@ -44,7 +43,7 @@ def run_inference(cfg: DictConfig, source: Union[str, Path, int] = 0) -> None:
     """
     model = load_model(cfg)
 
-    logger.info(f"Running inference on source: {source}")
+    logging.getLogger(__name__).info(f"Running inference on source: {source}")
 
     results = model.predict(
         source=source,
@@ -58,7 +57,7 @@ def run_inference(cfg: DictConfig, source: Union[str, Path, int] = 0) -> None:
     )
 
     for result in results:
-        logger.info(f"Detected {len(result.boxes)} objects")
+        logging.getLogger(__name__).info(f"Detected {len(result.boxes)} objects")
         if len(result.boxes) > 0:
-            logger.info(f"Boxes: {result.boxes.xyxy}")
-            logger.info(f"Confidences: {result.boxes.conf}")
+            logging.getLogger(__name__).info(f"Boxes: {result.boxes.xyxy}")
+            logging.getLogger(__name__).info(f"Confidences: {result.boxes.conf}")

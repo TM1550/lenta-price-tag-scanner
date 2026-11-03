@@ -1,0 +1,19 @@
+inputs: data/ocr_ready/ocr_inputs.jsonl
+output: data/cpu_ocr_trial
+catalogue_csv: ../data/db_hack.csv
+catalogue_db: data/catalogue.sqlite
+encoding: cp1251
+model_dir: models/easyocr
+cpu_threads: 4
+per_video: 5
+rotation_ccw: 90
+scale: 2.0
+max_side: 1280
+name_fraction: 0.4
+confidence: 0.25
+top_k: 5
+prominent_price_field: price_card
+price_confidence: 0.7
+hydra:
+  job:
+    chdir: false

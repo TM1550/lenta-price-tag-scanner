@@ -1,0 +1,7 @@
+source: ../data/yolo_source
+efficient: data/video_oof/efficient
+output: data/oof_v2
+videos: ["25_12-20", "26_12-20", "26_2-10", "43_15"]
+hydra:
+  job:
+    chdir: false

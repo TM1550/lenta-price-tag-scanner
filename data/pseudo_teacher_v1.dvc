@@ -1,0 +1,6 @@
+outs:
+- md5: d51eb00bccdb982eb8a4785a1ee8dab2.dir
+  size: 175411516
+  nfiles: 159
+  hash: md5
+  path: pseudo_teacher_v1

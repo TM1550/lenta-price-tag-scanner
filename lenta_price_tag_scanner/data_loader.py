@@ -1,45 +1,47 @@
-"""Data loading and management using DVC."""
+"""Explicit, fail-fast DVC materialization and public-source bootstrap."""
 
-import logging
+import subprocess
 from pathlib import Path
 
-import dvc.api
 
-logger = logging.getLogger(__name__)
-
-
-def download_data_with_dvc(data_dir: Path) -> None:
-    """Download data using DVC.
-
-    Args:
-        data_dir: Directory where data should be stored.
-    """
-    logger.info(f"Downloading data to {data_dir}")
-
-    data_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        dvc.api.open_repo(".", subrepos=True)
-        logger.info("DVC repository found, data should be available")
-    except Exception as e:
-        logger.warning(f"DVC repo not configured: {e}")
-        logger.info("Make sure to run 'dvc pull' to get the data")
-
-    logger.info(f"Data directory: {data_dir}")
+def repository_root():
+    for candidate in (Path.cwd(), *Path.cwd().parents):
+        if (candidate / ".dvc").is_dir():
+            return candidate
+    raise FileNotFoundError("Run from a DVC checkout or disable pull_dvc for explicit local files")
 
 
-def get_data_yaml_path(data_dir: Path) -> Path:
-    """Get path to data.yaml file.
+def download_data_with_dvc(targets, enabled=True):
+    if not enabled:
+        return
+    if isinstance(targets, str):
+        targets = [targets]
+    if not targets:
+        raise ValueError("Specify DVC targets; refusing to silently skip data retrieval")
+    from dvc.repo import Repo
 
-    Args:
-        data_dir: Data directory path.
+    with Repo(str(repository_root())) as repository:
+        repository.pull(targets=list(targets))
 
-    Returns:
-        Path to data.yaml file.
-    """
-    data_yaml = data_dir / "data.yaml"
 
-    if not data_yaml.exists():
-        raise FileNotFoundError(f"data.yaml not found at {data_yaml}")
+def download_data(url, output, folder=False):
+    """Fetch public originals; prepared/relabelled data remain separate DVC artifacts."""
+    import gdown
 
-    return data_yaml
+    destination = Path(output).resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    if folder:
+        result = gdown.download_folder(url, output=str(destination), quiet=False)
+    else:
+        result = gdown.download(url, output=str(destination) + "/", fuzzy=True, quiet=False)
+    if not result:
+        raise RuntimeError("Public download failed; check URL and access")
+    return result
+
+
+def code_version():
+    result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    if result.returncode:
+        return {"git_commit": "uncommitted", "git_dirty": True}
+    status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    return {"git_commit": result.stdout.strip(), "git_dirty": bool(status.stdout.strip())}

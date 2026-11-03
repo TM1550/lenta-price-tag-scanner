@@ -1,4 +1,5 @@
-/data
+/data/*
+!/data/*.dvc
 
 # Dependencies
 node_modules/
@@ -30,6 +31,17 @@ venv/
 ENV/
 env/
 .venv
+.venv*/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.pre-commit-cache/
+.pytest_cache/
+.ruff_cache/
 
 # IDE
 .vscode/
@@ -63,5 +75,20 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Poetry
-poetry.lock
+# Generated preprocessing logs
+outputs/
+
+# Generated datasets, serving bundles and local experiment state
+artifacts/
+lenta-artifact-store/
+*.json
+*.jsonl
+*.csv
+*.sqlite
+*.db
+*.tar
+*.tar.gz
+*.zip
+*.mp4
+*.safetensors
+.dvc/config.local

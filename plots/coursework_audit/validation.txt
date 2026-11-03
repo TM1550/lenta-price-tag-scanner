@@ -1,0 +1,128 @@
+Coursework verification, 2026-11-02
+Disposable audit checkout; original local Git history was not committed or rewritten.
+Clean Poetry installation: success; pip check: no broken requirements.
+Torch 2.11.0+cu128, CUDA 12.8. Wheel installed and config loaded outside checkout.
+Fresh DVC pull: inference_assets restored from empty no-SCM DVC workspace.
+CPU smoke training uses real data, one epoch, one fold; NOT a quality estimate.
+GPU 0 was busy (100% utilization); no GPU experiment launched during this audit.
+GitHub Actions configured but not remotely executed.
+
+
+--- audit_precommit.log ---
+
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+black....................................................................Passed
+isort....................................................................Passed
+flake8...................................................................Passed
+prettier.................................................................Passed
+
+
+--- audit_tests.log ---
+
+test_ambiguous_catalogue_never_autofills (test_cpu_ocr.ExtractionTests.test_ambiguous_catalogue_never_autofills) ... ok
+test_cents_required_for_template_price (test_cpu_ocr.ExtractionTests.test_cents_required_for_template_price) ... ok
+test_gtin (test_cpu_ocr.ExtractionTests.test_gtin) ... ok
+test_qr_mapping_is_not_zone_code (test_cpu_ocr.ExtractionTests.test_qr_mapping_is_not_zone_code) ... ok
+test_unlabelled_price_is_not_assigned (test_cpu_ocr.ExtractionTests.test_unlabelled_price_is_not_assigned) ... ok
+test_config_includes_inference_and_no_training_dispatch (test_packaging_contract.PackagingTests.test_config_includes_inference_and_no_training_dispatch) ... ok
+test_disabling_dvc_does_not_access_repository (test_packaging_contract.PackagingTests.test_disabling_dvc_does_not_access_repository) ... ok
+test_dvc_empty_targets_fails_before_any_network (test_packaging_contract.PackagingTests.test_dvc_empty_targets_fails_before_any_network) ... ok
+test_paths_resolve_from_working_directory (test_packaging_contract.PackagingTests.test_paths_resolve_from_working_directory) ... ok
+test_manual_labels_and_grouping (test_rebuild_efficient.RebuildTests.test_manual_labels_and_grouping) ... ok
+test_unreviewed_not_silently_used (test_rebuild_efficient.RebuildTests.test_unreviewed_not_silently_used) ... ok
+test_manifest_cannot_escape_root (test_text_prototype.PrototypeTests.test_manifest_cannot_escape_root) ... ok
+test_reference_is_only_used_for_evaluation (test_text_prototype.PrototypeTests.test_reference_is_only_used_for_evaluation) ... Saved 10 manually reviewed images: /home/ozon_hack/lenta-ml-system/tmp/tmpgq0wz5q_/dataset
+1: video.mp4 0.00s
+ok
+test_blank_crop_rejected (test_video_pipeline.PipelineTests.test_blank_crop_rejected) ... ok
+test_conflicting_prices_remain_empty (test_video_pipeline.PipelineTests.test_conflicting_prices_remain_empty) ... ok
+test_coverage_excludes_metadata_and_unknown (test_video_pipeline.PipelineTests.test_coverage_excludes_metadata_and_unknown) ... ok
+test_decoded_barcode_wins_over_ocr (test_video_pipeline.PipelineTests.test_decoded_barcode_wins_over_ocr) ... ok
+test_identity_switch_cannot_mix_products (test_video_pipeline.PipelineTests.test_identity_switch_cannot_mix_products) ... ok
+test_no_invented_price_and_invalid_date (test_video_pipeline.PipelineTests.test_no_invented_price_and_invalid_date) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.709s
+
+OK
+{
+  "images": 1,
+  "by_video": {
+    "video.mp4": 1
+  },
+  "backend": "easyocr",
+  "device": "cpu",
+  "processing_seconds": 0.00013373512774705887,
+  "peak_gpu_bytes": 0,
+  "evaluated": 1,
+  "cer": 0.875,
+  "wer": 1.0,
+  "per_video": {
+    "video.mp4": {
+      "cer": 0.875,
+      "count": 1
+    }
+  }
+}
+
+
+--- audit_clean_train.log ---
+
+Seed set to 42
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+┏━━━┳━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name  ┃ Type         ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model │ EfficientNet │  4.0 M │ train │     0 │
+└───┴───────┴──────────────┴────────┴───────┴───────┘
+Trainable params: 4.0 M
+Non-trainable params: 0
+Total params: 4.0 M
+Total estimated model params size (MB): 16.035
+Modules in train mode: 337
+Modules in eval mode: 0
+Total FLOPs: 0
+/home/ozon_hack/lenta-ml-system/audit/clean/lib/python3.12/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/ozon_hack/lenta-ml-system/audit/clean/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=27` in the `DataLoader` to improve performance.
+/home/ozon_hack/lenta-ml-system/audit/clean/lib/python3.12/site-packages/lightning/pytorch/loops/fit_loop.py:321: The number of training batches (1) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+`Trainer.fit` stopped: `max_epochs=1` reached.
+🏃 View run efficient_fold_0 at: http://127.0.0.1:18080/#/experiments/1/runs/8e4adc32472d40cc9eb50ab795e7006d
+🧪 View experiment at: http://127.0.0.1:18080/#/experiments/1
+🏃 View run efficient_oof_summary at: http://127.0.0.1:18080/#/experiments/1/runs/fa3ca681fb874dbb96442136c10f9968
+🧪 View experiment at: http://127.0.0.1:18080/#/experiments/1
+
+
+--- audit_serving_client.log ---
+
+{"predictions": [{"probability": 1.0}]}
+
+
+--- CPU video inference final output ---
+
+{"rows": 9, "coverage": 0.1497584541062802, "mean_filled_fields": 3.4444444444444446, "coverage_all_detected_tracks": 0.1497584541062802, "total_seconds": 76.87294761906378}
+
+--- ONNX verification ---
+
+{
+  "checkpoint_sha256": "70a48adb2696128b862186b20b3353e3e22c14924c2a031d311bc2e526d0e47f",
+  "onnx_sha256": "2eadc25542964e53a13dedba7bd4db94d5103949d6da217fdf679da8dc4120e9",
+  "size": 320,
+  "input": "RGB, ImageNet normalization, NCHW float32",
+  "output": "logits; apply sigmoid",
+  "parity": [
+    {
+      "batch": 1,
+      "max_absolute_error": 0.0
+    },
+    {
+      "batch": 2,
+      "max_absolute_error": 9.1552734375e-05
+    }
+  ],
+  "opset": 17
+}

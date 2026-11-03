@@ -1,0 +1,6 @@
+outs:
+- md5: 60c9ae1ac8d0929e1fd2bd5cb9dd02cc.dir
+  size: 92956870
+  nfiles: 6
+  hash: md5
+  path: inference_assets

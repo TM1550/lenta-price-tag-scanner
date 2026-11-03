@@ -1,87 +1,36 @@
-"""Main entry point for CLI commands."""
+"""One CLI; Click dispatches Hydra overrides without importing training dependencies."""
 
-import logging
+import importlib
 
-import hydra
-from omegaconf import DictConfig
-
-from .config import setup_config
-from .data_loader import download_data_with_dvc
-from .trainer import YOLOv8Trainer
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import click
+from hydra import compose, initialize_config_module
 
 
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
-def train(cfg: DictConfig) -> None:
-    """Train YOLOv8 model.
-
-    Args:
-        cfg: Configuration dictionary.
-    """
-    logger.info("Starting training pipeline...")
-
-    cfg = setup_config(cfg)
-
-    from pathlib import Path
-
-    data_dir = Path(cfg.data.data_path)
-    download_data_with_dvc(data_dir)
-
-    trainer = YOLOv8Trainer(cfg)
-    trainer.train()
-
-    logger.info("Training pipeline completed!")
-
-
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
-def infer(cfg: DictConfig) -> None:
-    """Run inference with trained model.
-
-    Args:
-        cfg: Configuration dictionary.
-    """
-    logger.info("Starting inference...")
-
-    cfg = setup_config(cfg)
-
-    from .inference import run_inference
-
-    run_inference(cfg)
-
-    logger.info("Inference completed!")
-
-
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
-def export(cfg: DictConfig) -> None:
-    """Export model to ONNX and TensorRT.
-
-    Args:
-        cfg: Configuration dictionary.
-    """
-    logger.info("Starting model export...")
-
-    cfg = setup_config(cfg)
-
-    from .export_model import export_model
-
-    export_model(cfg)
-
-    logger.info("Model export completed!")
-
-
-def main() -> None:
-    """Main entry point."""
-    import fire
-
-    commands = {
-        "train": train,
-        "infer": infer,
-        "export": export,
+@click.command(context_settings={"ignore_unknown_options": True})
+@click.argument(
+    "command", type=click.Choice(["train", "infer", "ocr", "export", "download", "serve-package"])
+)
+@click.argument("overrides", nargs=-1, type=click.UNPROCESSED)
+@click.option("--show-config", is_flag=True, help="Validate and print resolved configuration only.")
+def main(command, overrides, show_config):
+    routes = {
+        "train": ("train_oof", "train_oof"),
+        "infer": ("video_to_csv", "video_to_csv"),
+        "ocr": ("text_prototype", "text_prototype"),
+        "export": ("export_model", "export"),
+        "download": ("download", "download"),
+        "serve-package": ("serving", "serving"),
     }
+    module_name, config_name = routes[command]
+    with initialize_config_module(config_module="configs", version_base=None):
+        config = compose(config_name=config_name, overrides=list(overrides))
+    if show_config:
+        from omegaconf import OmegaConf
 
-    fire.Fire(commands)
+        click.echo(OmegaConf.to_yaml(config, resolve=True))
+        return
+    module = importlib.import_module(f"lenta_price_tag_scanner.{module_name}")
+    module.main.__wrapped__(config)
 
 
 if __name__ == "__main__":

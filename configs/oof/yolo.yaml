@@ -1,0 +1,8 @@
+kind: yolo
+architecture: yolov8n.yaml
+epochs: 30
+batch: 8
+size: 1280
+lr: 0.001
+workers: 2
+device: 0

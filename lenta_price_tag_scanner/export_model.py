@@ -1,54 +1,89 @@
-"""Model export to ONNX and TensorRT."""
+"""Export trained EfficientNet to ONNX, check parity, optionally build TensorRT."""
 
-import logging
-from pathlib import Path
+import shutil
+import subprocess
 
-from omegaconf import DictConfig
-from ultralytics import YOLO
+import hydra
 
-logger = logging.getLogger(__name__)
+from .build_datasets import checksum, resolve, write_json
+from .classifier import load_classifier
+from .data_loader import download_data_with_dvc
 
 
-def export_model(cfg: DictConfig) -> None:
-    """Export model to ONNX and TensorRT formats.
+@hydra.main(version_base=None, config_path="../configs", config_name="export")
+def main(cfg):
+    import numpy as np
+    import onnx
+    import onnxruntime as runtime
+    import torch
+    from PIL import Image
 
-    Args:
-        cfg: Configuration dictionary.
-    """
-    # Load trained model (use best.pt if available)
-    models_dir = Path(cfg.paths.models_dir)
-    best_model = models_dir / "best.pt"
-
-    if not best_model.exists():
-        logger.warning(f"Best model not found at {best_model}, using yolov8n.pt")
-        model = YOLO(cfg.model.model_name)
-    else:
-        logger.info(f"Loading best model from {best_model}")
-        model = YOLO(str(best_model))
-
-    # Create export directory
-    export_dir = models_dir / "exported"
-    export_dir.mkdir(parents=True, exist_ok=True)
-
-    # Export to ONNX
-    logger.info("Exporting to ONNX...")
-    onnx_path = model.export(
-        format="onnx",
-        opset=12,
-        simplify=True,
-        dynamic=False,
+    download_data_with_dvc(cfg.dvc_targets, cfg.pull_dvc)
+    if cfg.format not in ("onnx", "tensorrt"):
+        raise ValueError("format must be onnx or tensorrt")
+    output = resolve(cfg.output)
+    output.mkdir(parents=True, exist_ok=False)
+    torch.set_num_threads(4)
+    model, transform, size = load_classifier(resolve(cfg.checkpoint))
+    with Image.open(resolve(cfg.example)) as image:
+        pixels = transform(image.convert("RGB")).unsqueeze(0)
+    path = output / "model.onnx"
+    torch.onnx.export(
+        model,
+        pixels,
+        str(path),
+        opset_version=cfg.opset,
+        dynamo=False,
+        input_names=["images"],
+        output_names=["logits"],
+        dynamic_axes={"images": {0: "batch"}, "logits": {0: "batch"}},
     )
-    logger.info(f"ONNX model saved to: {onnx_path}")
-
-    # Export to TensorRT (if available)
-    try:
-        logger.info("Exporting to TensorRT...")
-        engine_path = model.export(
-            format="engine",
-            device=cfg.train.device,
-            half=True,
+    onnx.checker.check_model(str(path))
+    options = runtime.SessionOptions()
+    options.intra_op_num_threads = 4
+    session = runtime.InferenceSession(
+        str(path), sess_options=options, providers=["CPUExecutionProvider"]
+    )
+    parity = []
+    for batch_size in (1, 2):
+        batch = pixels.repeat(batch_size, 1, 1, 1)
+        with torch.inference_mode():
+            expected = model(batch).numpy()
+        actual = session.run(["logits"], {"images": batch.numpy()})[0]
+        np.testing.assert_allclose(actual, expected, rtol=cfg.rtol, atol=cfg.atol)
+        parity.append(
+            dict(batch=batch_size, max_absolute_error=float(np.abs(actual - expected).max()))
         )
-        logger.info(f"TensorRT engine saved to: {engine_path}")
-    except Exception as e:
-        logger.warning(f"Could not export to TensorRT: {e}")
-        logger.info("Make sure TensorRT is installed and GPU is available")
+    write_json(
+        output / "export_report.json",
+        dict(
+            checkpoint_sha256=checksum(resolve(cfg.checkpoint)),
+            onnx_sha256=checksum(path),
+            size=size,
+            input="RGB, ImageNet normalization, NCHW float32",
+            output="logits; apply sigmoid",
+            parity=parity,
+            opset=cfg.opset,
+        ),
+    )
+    if cfg.format == "tensorrt":
+        executable = shutil.which("trtexec")
+        if executable is None:
+            raise RuntimeError(
+                "ONNX verified, but trtexec is not installed; TensorRT was not built"
+            )
+        subprocess.run(
+            [
+                executable,
+                f"--onnx={path}",
+                f"--saveEngine={output / 'model.engine'}",
+                f"--minShapes=images:1x3x{size}x{size}",
+                f"--optShapes=images:1x3x{size}x{size}",
+                f"--maxShapes=images:8x3x{size}x{size}",
+            ],
+            check=True,
+        )
+
+
+if __name__ == "__main__":
+    main()

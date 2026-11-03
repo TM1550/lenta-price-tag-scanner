@@ -1,0 +1,15 @@
+defaults:
+  - oof: efficient
+  - _self_
+dataset: data/efficient_user_20261102
+output: runs/oof_efficient
+folds: null
+seed: 42
+mlflow_uri: http://127.0.0.1:8080
+experiment: lenta_video_oof
+pull_dvc: true
+dvc_targets: [data/efficient_user_20261102.dvc, data/yolo_original_4fold.dvc]
+smoke: false
+hydra:
+  job:
+    chdir: false

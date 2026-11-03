@@ -9,16 +9,14 @@ import mlflow
 from omegaconf import DictConfig
 from ultralytics import YOLO
 
-logger = logging.getLogger(__name__)
-
 
 def get_git_commit_hash() -> str:
     """Get current git commit hash."""
     try:
         repo = git.Repo(search_parent_directories=True)
         return repo.head.object.hexsha
-    except Exception as e:
-        logger.warning(f"Could not get git commit hash: {e}")
+    except Exception as error:
+        logging.getLogger(__name__).warning(f"Could not get git commit hash: {error}")
         return "unknown"
 
 
@@ -40,17 +38,17 @@ class YOLOv8Trainer:
         mlflow_uri = self.cfg.project.mlflow_uri
         experiment_name = self.cfg.project.experiment_name
 
-        logger.info(f"Setting up MLflow at {mlflow_uri}")
+        logging.getLogger(__name__).info(f"Setting up MLflow at {mlflow_uri}")
         mlflow.set_tracking_uri(mlflow_uri)
         mlflow.set_experiment(experiment_name)
 
     def load_model(self) -> None:
         """Load YOLOv8 model."""
         model_name = self.cfg.model.model_name
-        logger.info(f"Loading model: {model_name}")
+        logging.getLogger(__name__).info(f"Loading model: {model_name}")
 
         self.model = YOLO(model_name)
-        logger.info("Model loaded successfully")
+        logging.getLogger(__name__).info("Model loaded successfully")
 
     def train(self) -> None:
         """Train the model."""
@@ -60,7 +58,7 @@ class YOLOv8Trainer:
         self.setup_mlflow()
 
         data_yaml = Path(self.cfg.data.data_yaml)
-        logger.info(f"Using data config: {data_yaml}")
+        logging.getLogger(__name__).info(f"Using data config: {data_yaml}")
 
         train_args = {
             "data": str(data_yaml),
@@ -120,10 +118,10 @@ class YOLOv8Trainer:
             self.model.add_callback("on_epoch_end", self._on_epoch_end)
             self.model.add_callback("on_train_end", self._on_train_end)
 
-            logger.info("Starting training...")
+            logging.getLogger(__name__).info("Starting training...")
             results = self.model.train(**train_args)
 
-            logger.info("Training completed!")
+            logging.getLogger(__name__).info("Training completed!")
 
             self._log_final_metrics(results)
             self._save_model_artifact(results)
@@ -141,7 +139,7 @@ class YOLOv8Trainer:
 
     def _on_train_start(self, trainer) -> None:
         """Callback for training start."""
-        logger.info("Training started")
+        logging.getLogger(__name__).info("Training started")
 
     def _on_epoch_end(self, trainer) -> None:
         """Callback for epoch end - log metrics."""
@@ -171,7 +169,7 @@ class YOLOv8Trainer:
 
     def _on_train_end(self, trainer) -> None:
         """Callback for training end."""
-        logger.info("Training ended")
+        logging.getLogger(__name__).info("Training ended")
 
     def _log_final_metrics(self, results) -> None:
         """Log final training metrics."""
@@ -189,16 +187,16 @@ class YOLOv8Trainer:
         if hasattr(results, "best"):
             best_model_path = results.best
             mlflow.log_artifact(str(best_model_path), "models")
-            logger.info(f"Logged best model: {best_model_path}")
+            logging.getLogger(__name__).info(f"Logged best model: {best_model_path}")
 
         if hasattr(results, "last"):
             last_model_path = results.last
             mlflow.log_artifact(str(last_model_path), "models")
-            logger.info(f"Logged last model: {last_model_path}")
+            logging.getLogger(__name__).info(f"Logged last model: {last_model_path}")
 
         if hasattr(results, "save_dir"):
             save_dir = Path(results.save_dir)
             results_plot = save_dir / "results.png"
             if results_plot.exists():
                 mlflow.log_artifact(str(results_plot), "plots")
-                logger.info(f"Logged results plot: {results_plot}")
+                logging.getLogger(__name__).info(f"Logged results plot: {results_plot}")

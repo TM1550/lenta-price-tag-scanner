@@ -1,0 +1,3 @@
+Historical real-data 5-fold OOF, 10 epochs, snapshot efficient_user_20261102.
+2008 crops: 350 positive, 1658 negative. Precision 0.864486; recall 0.528571; F1 0.656028.
+Plots copied from runs/efficient_user_10epochs/plots. No full retraining during coursework audit.

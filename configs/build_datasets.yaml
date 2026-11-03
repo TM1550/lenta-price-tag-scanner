@@ -1,0 +1,13 @@
+candidates: ../outputs/crops_full
+videos: ../data
+weights: ../models/price_tag.pt
+output: data/video_oof
+stride: 15
+candidate_conf: 0.25
+label_conf: 0.5
+imgsz: 1280
+iou: 0.5
+device: cuda
+hydra:
+  job:
+    chdir: false

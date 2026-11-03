@@ -1,0 +1,12 @@
+checkpoint: data/inference_assets/efficient.pt
+example: data/inference_assets/example_crop.jpg
+output: artifacts/efficient_onnx
+pull_dvc: true
+dvc_targets: [data/inference_assets.dvc]
+format: onnx
+opset: 17
+rtol: 0.001
+atol: 0.0001
+hydra:
+  job:
+    chdir: false

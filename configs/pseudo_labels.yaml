@@ -1,0 +1,17 @@
+videos: ../data
+weights: ../lenta-price-tag-scanner/base_pipeline/price_tag.pt
+output: data/pseudo_teacher_v1
+interval_ms: 1000
+proposal_conf: 0.25
+accept_conf: 0.7
+iou: 0.5
+imgsz: 1280
+threads: 4
+quality:
+  min_side: 40
+  min_sharpness: 15
+  min_contrast: 12
+  max_flat_fraction: 0.98
+hydra:
+  job:
+    chdir: false

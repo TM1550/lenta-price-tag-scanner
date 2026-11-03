@@ -1,0 +1,5 @@
+source: data/efficient_review
+output: data/efficient_reviewed
+hydra:
+  job:
+    chdir: false

@@ -1,0 +1,29 @@
+source: ../ocr_dataset_all_crops/ocr_dataset_all_crops/images
+labels: null
+crop_manifest: null
+output: data/text_prototype
+backend: easyocr
+preprocess: none
+zones: false
+paddle_cache: models/paddle
+paddle_rec: eslav_PP-OCRv5_mobile_rec
+paddle_vl_model: PaddlePaddle/PaddleOCR-VL
+paddle_vl_revision: 7fa00a8c55b735ba51ba49a9058f3f9c57a99a11
+device: cpu
+cpu_threads: 4
+rotation_ccw: 90
+per_video: 0
+scale: 2.0
+max_side: 1280
+easyocr_models: models/easyocr
+vlm_model: Qwen/Qwen3-VL-4B-Instruct
+vlm_revision: ebb281ec70b05090aa6165b016eac8ec08e71b17
+min_pixels: 200704
+max_pixels: 1003520
+max_new_tokens: 512
+prompt: >-
+  Перепиши только видимый печатный текст на изображении, строка за строкой.
+  Ничего не добавляй и не объясняй. Нечитаемый текст пропусти.
+hydra:
+  job:
+    chdir: false

@@ -1,0 +1,11 @@
+kind: efficient
+architecture: efficientnet_b0
+pretrained: false
+epochs: 10
+batch: 32
+size: 320
+lr: 0.001
+weight_decay: 0.0001
+workers: 2
+accelerator: gpu
+threshold: 0.5

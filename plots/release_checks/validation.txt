@@ -1,0 +1,15 @@
+Repository cleanup verification, 2026-11-03
+23 unit tests passed.
+Black, isort and flake8 passed.
+120 publishable files checked; no generated data/models or config.local in the publication candidate list.
+Known DVC credential absent from working config, PRESENT in HEAD history. Rotate credential and sanitize history before pushing.
+No commit, staging, push or history rewrite performed.
+
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+black....................................................................Passed
+isort....................................................................Passed
+flake8...................................................................Passed
+prettier.................................................................Passed
