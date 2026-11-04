@@ -39,6 +39,16 @@ poetry run python -m lenta_price_tag_scanner.train_oof --config-name smoke_yolo
 Ultralytics отключается в callback данного запуска, чтобы логирование проекта
 оставалось в собственном активном run.
 
+## Выполненный контроль 05.11.2026
+
+Обе модели прошли две эпохи на CPU. Четыре MLflow runs имеют статус FINISHED,
+`git_commit=57eabacff44d539e9e172387d106afa24328aef0`, `git_dirty=False`.
+Для YOLO сохранены box/cls/DFL loss, для EfficientNet train loss по двум эпохам.
+Сохранены 17 графиков, конфигурации, итоговые метрики и текстовые журналы.
+Порт 8080 на ноутбуке занят AgentService, поэтому фактический контроль использовал
+`mlflow_uri=http://127.0.0.1:18080`. При повторении добавьте этот override обеим
+командам и используйте `--port 18080` для сервера. Default проекта остаётся 8080.
+
 ## Подтверждение
 
 Результаты выполненной проверки и минимум три графика сохраняются в
@@ -46,7 +56,7 @@ Ultralytics отключается в callback данного запуска, ч
 хранятся локально в `data/control_runs_20261105/`, вне Git. Для просмотра этого запуска:
 
 ```bash
-poetry run mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///data/control_runs_20261105/mlflow.db --artifacts-destination data/control_runs_20261105/mlflow_artifacts
+poetry run mlflow server --host 127.0.0.1 --port 18080 --backend-store-uri sqlite:///data/control_runs_20261105/mlflow.db --artifacts-destination data/control_runs_20261105/mlflow_artifacts
 ```
 
 Старые серверные runs с `git_commit=uncommitted` остаются историческими. Их код

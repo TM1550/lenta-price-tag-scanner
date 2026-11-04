@@ -1,0 +1,58 @@
+Coursework control training: 2026-11-05, CPU only.
+Source Git commit: 57eabacff44d539e9e172387d106afa24328aef0
+All four MLflow runs FINISHED; git_dirty=False; smoke=True.
+Both models: one held-out video fold, 8 train / 8 validation images, 2 epochs.
+Tracking URI override: http://127.0.0.1:18080 (8080 occupied by AgentService).
+Configured project default remains http://127.0.0.1:8080.
+Local MLflow DB/artifacts: data/control_runs_20261105/; excluded from Git.
+56 unit tests passed; pip check passed; all eight pre-commit hooks passed.
+Short-name AST scan: no violations; underscore is a discarded value.
+Historical full OOF score unchanged: 154/3701 = 4.1610%.
+These CPU runs verify training/logging, not model quality.
+
+yolo_oof_summary | a43480a118b849afacd819a2cde3155c | FINISHED
+params: {"git_commit": "57eabacff44d539e9e172387d106afa24328aef0", "git_dirty": "False", "smoke": "True"}
+metrics: {"fitness": 0.0, "metrics/mAP50-95_B_": 0.0, "metrics/mAP50_B_": 0.0, "metrics/precision_B_": 0.0, "metrics/recall_B_": 0.0}
+MLflow graph artifacts: plots/fitness.png, plots/metrics_mAP50(B).png, plots/metrics_mAP50-95(B).png, plots/metrics_precision(B).png, plots/metrics_recall(B).png
+
+yolo_fold_0 | 8b35d283b8c84347941ae6cbdc99cc8e | FINISHED
+params: {"amp": "False", "architecture": "yolov8n.yaml", "batch": "4", "cache": "False", "cpu_threads": "4", "device": "cpu", "effective_epochs": "2", "epochs": "100", "fold": "0", "git_commit": "57eabacff44d539e9e172387d106afa24328aef0", "git_dirty": "False", "kind": "yolo", "lr": "0.001", "manifest_sha256": "16bec6ac51c26d2343f86255eb4067ff29d78fc4ab9af26406d116199fe7941d", "optimizer": "AdamW", "predict_conf": "0.001", "pseudo_labels": "False", "seed": "42", "size": "320", "smoke": "True", "smoke_samples": "8", "weight_decay": "0.0005", "workers": "0"}
+metrics: {"fitness": 0.0, "metrics/mAP50-95_B_": 0.0, "metrics/mAP50_B_": 0.0, "metrics/precision_B_": 0.0, "metrics/recall_B_": 0.0, "train/box_loss": 3.44204, "train/cls_loss": 8.04239, "train/dfl_loss": 1.89185}
+train/box_loss: [{"step": 0, "value": 2.61344}, {"step": 1, "value": 3.44204}]
+train/cls_loss: [{"step": 0, "value": 8.7588}, {"step": 1, "value": 8.04239}]
+train/dfl_loss: [{"step": 0, "value": 1.45715}, {"step": 1, "value": 1.89185}]
+MLflow graph artifacts: training_plots/train_box_loss.png, training_plots/train_cls_loss.png, training_plots/train_dfl_loss.png, training_plots/val_box_loss.png, training_plots/val_cls_loss.png, training_plots/val_dfl_loss.png
+
+efficient_oof_summary | 7a10dc3a371c4660b3c61cbef6dd2a6a | FINISHED
+params: {"git_commit": "57eabacff44d539e9e172387d106afa24328aef0", "git_dirty": "False", "smoke": "True"}
+metrics: {"accuracy": 1.0, "f1": 1.0, "precision": 1.0, "recall": 1.0, "val_loss": 0.41252437233924866}
+MLflow graph artifacts: plots/accuracy.png, plots/f1.png, plots/precision.png, plots/recall.png, plots/val_loss.png
+
+efficient_fold_0 | 97ec3c0f173d4d979b398e267cb10ae1 | FINISHED
+params: {"accelerator": "cpu", "architecture": "efficientnet_b0", "batch": "4", "cpu_threads": "4", "effective_epochs": "2", "epochs": "10", "fold": "0", "git_commit": "57eabacff44d539e9e172387d106afa24328aef0", "git_dirty": "False", "kind": "efficient", "lr": "0.001", "manifest_sha256": "ad6cd1500d14d402ed3c650e8fdc8de2ef3964043c0a39c766bb01747073b65b", "pretrained": "False", "pseudo_labels": "True", "seed": "42", "size": "128", "smoke": "True", "smoke_samples": "8", "threshold": "0.5", "weight_decay": "0.0001", "workers": "0"}
+metrics: {"accuracy": 1.0, "f1": 1.0, "precision": 1.0, "recall": 1.0, "train_loss": 2.795609951019287, "val_loss": 0.41252437233924866}
+train_loss: [{"step": 0, "value": 1.2572879791259766}, {"step": 1, "value": 2.795609951019287}]
+MLflow graph artifacts: training_plots/train_loss.png
+
+Saved graph count: 17
+efficient_training_train_loss.png
+efficient_summary_accuracy.png
+efficient_summary_f1.png
+efficient_summary_precision.png
+efficient_summary_recall.png
+efficient_summary_val_loss.png
+yolo_training_train_box_loss.png
+yolo_training_train_cls_loss.png
+yolo_training_train_dfl_loss.png
+yolo_training_val_box_loss.png
+yolo_training_val_cls_loss.png
+yolo_training_val_dfl_loss.png
+yolo_summary_fitness.png
+yolo_summary_metrics_mAP50(B).png
+yolo_summary_metrics_mAP50-95(B).png
+yolo_summary_metrics_precision(B).png
+yolo_summary_metrics_recall(B).png
+
+Post-refactor CPU video smoke: 43_15, 9 frames, 11 CSV rows, 41.20 seconds.
+Inference code_version: {"git_commit": "57eabacff44d539e9e172387d106afa24328aef0", "git_dirty": false}
+YOLO held-out fold 3, EfficientNet rank; local PaddleOCR weights, no GPU.

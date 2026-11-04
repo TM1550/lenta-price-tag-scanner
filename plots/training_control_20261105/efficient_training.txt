@@ -1,0 +1,78 @@
+2026/11/05 00:46:52 INFO mlflow.tracking.fluent: Experiment with name 'lenta_coursework_control_20261105_57eabacf' does not exist. Creating a new experiment.
+[2026-11-05 00:46:59,313][matplotlib.font_manager][INFO] - generated new fontManager
+INFO: Seed set to 42
+[2026-11-05 00:47:04,690][lightning.fabric.utilities.seed][INFO] - Seed set to 42
+INFO: GPU available: False, used: False
+[2026-11-05 00:47:04,870][lightning.pytorch.utilities.rank_zero][INFO] - GPU available: False, used: False
+INFO: TPU available: False, using: 0 TPU cores
+[2026-11-05 00:47:04,871][lightning.pytorch.utilities.rank_zero][INFO] - TPU available: False, using: 0 TPU cores
+INFO: 💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+[2026-11-05 00:47:04,872][lightning.pytorch.utilities.rank_zero][INFO] - 💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\tsire\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\logging\__init__.py", line 1163, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Users\tsire\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4a1' in position 73: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\tsire\Downloads\MLOPS_codex\Design_ML_system\lenta_price_tag_scanner\train_oof.py", line 355, in <module>
+    main()
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\main.py", line 94, in decorated_main
+    _run_hydra(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\_internal\utils.py", line 394, in _run_hydra
+    _run_app(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\_internal\utils.py", line 457, in _run_app
+    run_and_report(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\_internal\utils.py", line 220, in run_and_report
+    return func()
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\_internal\utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\_internal\hydra.py", line 119, in run
+    ret = run_job(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\hydra\core\utils.py", line 189, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\Design_ML_system\lenta_price_tag_scanner\train_oof.py", line 329, in main
+    metrics = (efficient if cfg.oof.kind == "efficient" else yolo)(cfg, fold, fold_output)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\Design_ML_system\lenta_price_tag_scanner\train_oof.py", line 93, in efficient
+    trainer = lightning.Trainer(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\utilities\argparse.py", line 70, in insert_env_defaults
+    return fn(self, **kwargs)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\trainer\trainer.py", line 498, in __init__
+    self._logger_connector.on_trainer_init(logger, log_every_n_steps)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\trainer\connectors\logger_connector\logger_connector.py", line 47, in on_trainer_init
+    self.configure_logger(logger)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\trainer\connectors\logger_connector\logger_connector.py", line 91, in configure_logger
+    rank_zero_info(
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning_utilities\core\rank_zero.py", line 42, in wrapped_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning_utilities\core\rank_zero.py", line 67, in rank_zero_info
+    _info(*args, stacklevel=stacklevel, **kwargs)
+  File "C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning_utilities\core\rank_zero.py", line 61, in _info
+    log.info(*args, **kwargs)
+Message: '💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.'
+Arguments: ()
+┌───┬───────┬──────────────┬────────┬───────┬───────┐
+│   │ Name  │ Type         │ Params │ Mode  │ FLOPs │
+├───┼───────┼──────────────┼────────┼───────┼───────┤
+│ 0 │ model │ EfficientNet │  4.0 M │ train │     0 │
+└───┴───────┴──────────────┴────────┴───────┴───────┘
+Trainable params: 4.0 M
+Non-trainable params: 0
+Total params: 4.0 M
+Total estimated model params size (MB): 16.035
+Modules in train mode: 337
+Modules in eval mode: 0
+Total FLOPs: 0
+C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\utilities\_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\trainer\connectors\data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+C:\Users\tsire\Downloads\MLOPS_codex\.venv-pseudolabel\Lib\site-packages\lightning\pytorch\loops\fit_loop.py:321: The number of training batches (2) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+INFO: `Trainer.fit` stopped: `max_epochs=2` reached.
+[2026-11-05 00:47:06,141][lightning.pytorch.utilities.rank_zero][INFO] - `Trainer.fit` stopped: `max_epochs=2` reached.
+🏃 View run efficient_fold_0 at: http://127.0.0.1:18080/#/experiments/1/runs/97ec3c0f173d4d979b398e267cb10ae1
+🧪 View experiment at: http://127.0.0.1:18080/#/experiments/1
+🏃 View run efficient_oof_summary at: http://127.0.0.1:18080/#/experiments/1/runs/7a10dc3a371c4660b3c61cbef6dd2a6a
+🧪 View experiment at: http://127.0.0.1:18080/#/experiments/1

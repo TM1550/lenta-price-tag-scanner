@@ -179,6 +179,8 @@ poetry run price-scanner train-yolo output=runs/yolo_roboflow_5fold_full
 Контрольные профили используют CPU, две эпохи и по восемь изображений train/validation
 одного fold. Они проверяют инфраструктуру и не заменяют измеренную OOF-метрику.
 [Запуск и протокол MLflow](docs/training_control.md).
+Выполнено 05.11 на CPU: четыре runs FINISHED, чистый Git commit, две точки train loss
+на каждую модель и 17 графиков в `plots/training_control_20261105`.
 Итоговый run содержит графики метрик; fold-run — историю функций потерь. Локально сохраняются
 checkpoint каждого fold, OOF-предсказания, история и конфигурация.
 
