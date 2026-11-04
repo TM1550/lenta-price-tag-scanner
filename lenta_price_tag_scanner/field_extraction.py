@@ -7,6 +7,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 
+from .constants import EXTRACTION_DEFAULTS
 from .cpu_ocr import FIELDS, parse_text, prominent_price, qr_fields, valid_gtin
 
 META_FIELDS = {"filename", "frame_timestamp", "x_min", "y_min", "x_max", "y_max"}
@@ -68,17 +69,20 @@ def text_fields(text):
     return fields
 
 
-def crop_fields(image, text, lines, line_size, price_field="price_card", confidence=0.5):
+def crop_fields(
+    image, text, lines, line_size, price_field="price_card", confidence=0.5, options=None
+):
+    options = {**EXTRACTION_DEFAULTS, **(options or {})}
     fields = text_fields(text)
     provenance = {key: "ocr_text" for key in fields}
     if lines:
         width, height = line_size
-        positioned, codes = parse_text(lines, height, 0.43, confidence)
+        positioned, codes = parse_text(lines, height, options["name_fraction"], confidence)
         name = positioned.get("product_name", "").strip()
         if name:
             fields["product_name"] = name
             provenance["product_name"] = "ocr_boxes"
-        price = prominent_price(lines, height, width, confidence)
+        price = prominent_price(lines, height, width, confidence, options.get("price_layout"))
         if price and price_field and not fields.get(price_field):
             fields[price_field] = price
             provenance[price_field] = "price_template_heuristic"
@@ -92,14 +96,27 @@ def crop_fields(image, text, lines, line_size, price_field="price_card", confide
             elif name_lines:
                 break
         if name_lines:
-            fields["product_name"] = " ".join(name_lines[:5])
+            fields["product_name"] = " ".join(name_lines[: options["max_name_lines"]])
             provenance["product_name"] = "vlm_text"
     pixels = np.asarray(image.convert("RGB"))
     hsv = cv2.cvtColor(pixels, cv2.COLOR_RGB2HSV)
-    colored = (hsv[:, :, 1] > 70) & (hsv[:, :, 2] > 70)
-    red = float((colored & ((hsv[:, :, 0] < 15) | (hsv[:, :, 0] > 165))).mean())
-    yellow = float((colored & (hsv[:, :, 0] >= 15) & (hsv[:, :, 0] < 40)).mean())
-    if max(red, yellow) > 0.20:
+    colored = (hsv[:, :, 1] > options["saturation_threshold"]) & (
+        hsv[:, :, 2] > options["brightness_threshold"]
+    )
+    red = float(
+        (
+            colored
+            & ((hsv[:, :, 0] < options["red_hue_low"]) | (hsv[:, :, 0] > options["red_hue_high"]))
+        ).mean()
+    )
+    yellow = float(
+        (
+            colored
+            & (hsv[:, :, 0] >= options["red_hue_low"])
+            & (hsv[:, :, 0] < options["yellow_hue_high"])
+        ).mean()
+    )
+    if max(red, yellow) > options["min_color_fraction"]:
         fields["color"] = "red" if red > yellow else "yellow"
         provenance["color"] = "pixel_color"
     import zxingcpp

@@ -5,6 +5,8 @@
 - [Главный README](../README.md): задача, метрики, установка и команды.
 - [Проектное предложение](proposal.pdf) и [его исходник](proposal.md).
 - [Соответствие требованиям преподавателя](compliance.md).
+- [Контроль обучения и MLflow](training_control.md): короткие CPU-профили и версия кода.
+- [YOLO ONNX и MLflow Serving](yolo_deployment.md): экспорт, HTTP и контракт входов.
 - [Видео → CSV](video_to_csv.md): устройство итогового пайплайна.
 - [OOF по эталонным кадрам](timestamp_oof_run.md): выполненный расчёт и ограничения.
 - [Правильность заполнения полей](field_validation.md): правила scorer.

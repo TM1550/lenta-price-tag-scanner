@@ -1,3 +1,6 @@
+defaults:
+  - price_layout: default
+  - _self_
 inputs: data/ocr_ready/ocr_inputs.jsonl
 output: data/cpu_ocr_trial
 catalogue_csv: ../data/db_hack.csv

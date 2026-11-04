@@ -11,6 +11,7 @@ from omegaconf import OmegaConf
 from PIL import Image
 
 from .build_datasets import checksum, resolve, write_json
+from .constants import IMAGE_PROCESSING_DEFAULTS
 
 
 def normalize(text):
@@ -35,7 +36,7 @@ def adapt_paddle_mask(model):
         module.create_causal_mask = compatible
 
 
-def ordered_text(lines):
+def ordered_text(lines, row_height_fraction=IMAGE_PROCESSING_DEFAULTS["row_height_fraction"]):
     """Approximate row order from boxes rather than detector's arbitrary ordering."""
     boxes = []
     for bbox, text, confidence in lines:
@@ -49,7 +50,8 @@ def ordered_text(lines):
         if (
             current
             and box["top"]
-            > min(item["top"] for item in current) + min(item["height"] for item in current) * 0.6
+            > min(item["top"] for item in current)
+            + min(item["height"] for item in current) * row_height_fraction
         ):
             ordered.extend(sorted(current, key=lambda item: item["left"]))
             current = []
@@ -143,7 +145,9 @@ class TextReader:
     def read(self, image):
         from .crop_quality import preprocess
 
-        image = preprocess(image, self.cfg.get("preprocess", "none"))
+        image = preprocess(
+            image, self.cfg.get("preprocess", "none"), self.cfg.get("image_processing")
+        )
         if self.cfg.backend in ("qwen", "paddlevl") and self.cfg.get("zones", False):
             middle = image.height // 2
             upper, cut_upper = self._read(image.crop((0, 0, image.width, middle)))
@@ -175,7 +179,15 @@ class TextReader:
                     )
                 ]
                 self.last_lines = lines
-                return ordered_text(lines), False
+                return (
+                    ordered_text(
+                        lines,
+                        self.cfg.get("image_processing", {}).get(
+                            "row_height_fraction", IMAGE_PROCESSING_DEFAULTS["row_height_fraction"]
+                        ),
+                    ),
+                    False,
+                )
             lines = self.model.readtext(
                 np.asarray(resized),
                 detail=1,
@@ -185,7 +197,15 @@ class TextReader:
                 workers=0,
             )
             self.last_lines = lines
-            return ordered_text(lines), False
+            return (
+                ordered_text(
+                    lines,
+                    self.cfg.get("image_processing", {}).get(
+                        "row_height_fraction", IMAGE_PROCESSING_DEFAULTS["row_height_fraction"]
+                    ),
+                ),
+                False,
+            )
         messages = [
             {
                 "role": "user",
@@ -220,8 +240,12 @@ class TextReader:
                 **inputs,
                 do_sample=False,
                 max_new_tokens=self.cfg.max_new_tokens,
-                repetition_penalty=1.05,
-                no_repeat_ngram_size=6,
+                repetition_penalty=self.cfg.get("image_processing", {}).get(
+                    "repetition_penalty", IMAGE_PROCESSING_DEFAULTS["repetition_penalty"]
+                ),
+                no_repeat_ngram_size=self.cfg.get("image_processing", {}).get(
+                    "no_repeat_ngram_size", IMAGE_PROCESSING_DEFAULTS["no_repeat_ngram_size"]
+                ),
             )
         tokens = generated[:, inputs.input_ids.shape[1] :]
         text = self.processor.batch_decode(

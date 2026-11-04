@@ -1,5 +1,7 @@
 """Load the explicit RGB classifier contract used by export and serving."""
 
+from .constants import IMAGENET_MEAN, IMAGENET_STD
+
 
 def load_classifier(checkpoint_path):
     import timm
@@ -17,7 +19,7 @@ def load_classifier(checkpoint_path):
         [
             transforms.Resize((size, size)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
         ]
     )
     return model, transform, size

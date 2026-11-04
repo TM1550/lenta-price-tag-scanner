@@ -33,10 +33,15 @@ def parse_label(line, line_number, class_count):
     if any(value < -1e-7 or value > 1 + 1e-7 for value in coords):
         raise ValueError(f"Non-normalized coordinates at line {line_number}")
     if len(coords) == 4:
-        x, y, width, height = coords
+        center_x, center_y, width, height = coords
         if width < 0 or height < 0:
             raise ValueError(f"Negative box size at line {line_number}")
-        box = [x - width / 2, y - height / 2, x + width / 2, y + height / 2]
+        box = [
+            center_x - width / 2,
+            center_y - height / 2,
+            center_x + width / 2,
+            center_y + height / 2,
+        ]
         kind = "bbox"
     elif len(coords) >= 6 and len(coords) % 2 == 0:
         box = [min(coords[::2]), min(coords[1::2]), max(coords[::2]), max(coords[1::2])]
@@ -77,14 +82,18 @@ def clean_boxes(boxes, width, height, min_side_px, iou_threshold):
         else:
             candidates.append(box)
     kept = []
-    for box in sorted(candidates, key=lambda b: (-area(b["xyxy"]), b["line"])):
+    for box in sorted(
+        candidates, key=lambda candidate: (-area(candidate["xyxy"]), candidate["line"])
+    ):
         matches = [(iou(box["xyxy"], k["xyxy"]), k) for k in kept if k["cls"] == box["cls"]]
         overlap, match = max(matches, key=lambda item: item[0], default=(0.0, None))
         if overlap > iou_threshold:
             removed.append(dict(box, reason="nms", kept_line=match["line"], iou=overlap))
         else:
             kept.append(box)
-    return sorted(kept, key=lambda b: b["line"]), sorted(removed, key=lambda b: b["line"])
+    return sorted(kept, key=lambda candidate: candidate["line"]), sorted(
+        removed, key=lambda candidate: candidate["line"]
+    )
 
 
 def yolo_line(box):
@@ -207,16 +216,16 @@ def main(cfg):
             source_was_empty=not task["boxes"],
         )
         manifest.append(record)
-        changes = Counter(r["reason"] for r in task["removed"])
+        changes = Counter(removed_box["reason"] for removed_box in task["removed"])
         count = Counter(
             images=1,
             input_boxes=len(task["boxes"]),
             kept_boxes=len(task["kept"]),
             removed_small=changes["small"],
             removed_nms=changes["nms"],
-            polygon_input=sum(b["kind"] == "polygon" for b in task["boxes"]),
-            bbox_input=sum(b["kind"] == "bbox" for b in task["boxes"]),
-            clipped_input=sum(b["clipped"] for b in task["boxes"]),
+            polygon_input=sum(candidate["kind"] == "polygon" for candidate in task["boxes"]),
+            bbox_input=sum(candidate["kind"] == "bbox" for candidate in task["boxes"]),
+            clipped_input=sum(candidate["clipped"] for candidate in task["boxes"]),
             empty_input=int(not task["boxes"]),
             empty_output=int(not task["kept"]),
         )
@@ -224,7 +233,9 @@ def main(cfg):
         by_video.setdefault(record["video"], Counter()).update(count)
         audit.append(dict(image=record["image"], kept=task["kept"], removed=task["removed"]))
     # Prioritize changes rather than the first frames of one video.
-    changed = sorted(tasks, key=lambda t: (-len(t["removed"]), t["image"].name))
+    changed = sorted(
+        tasks, key=lambda task_item: (-len(task_item["removed"]), task_item["image"].name)
+    )
     for task in changed[: cfg.preview_limit]:
         preview(
             task["image"],

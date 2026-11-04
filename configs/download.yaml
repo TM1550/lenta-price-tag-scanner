@@ -4,6 +4,9 @@ targets:
   - data/yolo_original_4fold.dvc
   - data/inference_assets.dvc
   - data/runtime_assets.dvc
+  - data/yolo_roboflow_5fold_v1.dvc
+  - data/video_oof_20261104.dvc
+  - data/yolo_deployment_v1.dvc
 url: https://drive.google.com/drive/folders/1_UbQ7x4MK9fZjA-9DqJY_A8nedsg9KMy
 output: data/raw_public
 folder: true

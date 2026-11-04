@@ -12,6 +12,7 @@ import hydra
 from omegaconf import OmegaConf
 
 from .build_datasets import checksum, resolve, write_json
+from .constants import PRICE_LAYOUT_DEFAULTS
 
 FIELDS = (
     "filename product_name price_default price_card price_discount barcode discount_amount "
@@ -157,8 +158,9 @@ def parse_text(lines, height, name_fraction, confidence):
     return fields, codes
 
 
-def prominent_price(lines, height, width, confidence):
+def prominent_price(lines, height, width, confidence, options=None):
     """Red-card template heuristic; no implicit .00 when cents are missing."""
+    options = {**PRICE_LAYOUT_DEFAULTS, **(options or {})}
     numbers = []
     for bbox, text, score in lines:
         token = text.strip().replace(",", ".")
@@ -172,9 +174,9 @@ def prominent_price(lines, height, width, confidence):
     large = [
         item
         for item in numbers
-        if item[0] >= height * 0.12
-        and item[4] >= height * 0.40
-        and (item[2] + item[3]) / 2 >= width * 0.25
+        if item[0] >= height * options["min_height_fraction"]
+        and item[4] >= height * options["min_top_fraction"]
+        and (item[2] + item[3]) / 2 >= width * options["min_center_x_fraction"]
     ]
     if not large:
         return ""
@@ -186,9 +188,11 @@ def prominent_price(lines, height, width, confidence):
         for item in numbers
         if len(item[1]) == 2
         and "." not in item[1]
-        and item[0] < rubles[0] * 0.6
+        and item[0] < rubles[0] * options["max_cents_height_ratio"]
         and (item[2] + item[3]) / 2 > (rubles[2] + rubles[3]) / 2
-        and rubles[4] - rubles[0] * 0.2 <= (item[4] + item[5]) / 2 <= rubles[4] + rubles[0] * 0.6
+        and rubles[4] - rubles[0] * options["cents_top_margin_ratio"]
+        <= (item[4] + item[5]) / 2
+        <= rubles[4] + rubles[0] * options["cents_bottom_margin_ratio"]
     ]
     return rubles[1] + "." + cents[0][1] if len(cents) == 1 else ""
 
@@ -269,7 +273,11 @@ def main(cfg):
                     raise ValueError("Unsupported prominent price field")
                 if not fields.get(cfg.prominent_price_field):
                     fields[cfg.prominent_price_field] = prominent_price(
-                        lines, image.shape[0], image.shape[1], cfg.price_confidence
+                        lines,
+                        image.shape[0],
+                        image.shape[1],
+                        cfg.price_confidence,
+                        cfg.get("price_layout"),
                     )
             codes.update(ocr_codes)
             matched, suggestions = match_catalog(

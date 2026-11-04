@@ -91,9 +91,10 @@ OOF recall классификатора 0.5286. Качество нового р
 
 ## Внедрение
 
-Полный видеопайплайн реализован как локальная batch-команда. Для обученного
-EfficientNet реализованы ONNX с проверкой численной эквивалентности и HTTP-сервис
-MLflow Serving. Это сервис классификации кропов, **не сервис всего видеопайплайна**.
+Полный видеопайплайн реализован как локальная batch-команда. Для обученных
+YOLO и EfficientNet реализованы ONNX с проверкой эквивалентности и HTTP-сервисы
+MLflow Serving. HTTP-сервисы принимают изображения и выполняют соответствующий
+этап; полный pipeline видео → CSV запускается batch-командой.
 TensorRT CLI предусмотрен, но сборка engine требует `trtexec`; Triton не развёрнут.
 
 ## Setup
@@ -125,21 +126,20 @@ poetry install --with data,ocr,paddle
 
 ### Доступ к DVC
 
-Подготовлен локальный архив **`coursework_artifacts.tar.gz`** с DVC object store.
-В рабочей папке автора он находится в `../server_results`; преподавателю нужен отдельный
-доступный URL этого архива или общий DVC remote. **Без передачи хранилища одно клонирование
-GitHub не восстановит подготовленные данные и веса.**
-
-После получения распакуйте архив в удобное место и укажите абсолютный путь к `dvc-store`:
+Рабочее локальное хранилище автора — `../server_results/dvc-store`, remote
+`laptop-temp`. Внешний DAGsHub remote настроен сокомандником в ветке `feat/dvc`,
+но загрузка остальных артефактов и доступ проверяющего ещё не завершены.
+При передаче проекта предоставьте DVC object store или доступ к общему remote.
+Для локальной копии object store:
 
 ```bash
-tar -xzf coursework_artifacts.tar.gz
 poetry run dvc remote modify --local artifacts url /absolute/path/to/dvc-store
+poetry run dvc config --local core.remote artifacts
 poetry run price-scanner download
 ```
 
 Авторизация/локальные пути — только в `.dvc/config.local`, который игнорируется Git.
-`train`, `infer`, `export` и `serve-package` по умолчанию вызывают настоящий DVC pull
+`train`, `infer`, экспорт и упаковка моделей по умолчанию вызывают настоящий DVC pull
 и завершаются ошибкой при недоступном хранилище. Для уже подготовленных внешних файлов
 можно явно указать `pull_dvc=false`.
 
@@ -156,13 +156,14 @@ poetry run price-scanner download source=public output=data/raw_public
 По умолчанию MLflow ожидается на **http://127.0.0.1:8080**. Для своего тестового сервера:
 
 ```bash
-poetry run mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///mlflow.db
+poetry run mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///data/control_runs/mlflow.db --artifacts-destination data/control_runs/mlflow_artifacts
 ```
 
 Проверка сквозного запуска на реальных данных (не оценка качества):
 
 ```bash
-poetry run price-scanner train smoke=true 'folds=[0]' oof.accelerator=cpu oof.workers=0 output=runs/smoke
+poetry run python -m lenta_price_tag_scanner.train_oof --config-name smoke_efficient
+poetry run python -m lenta_price_tag_scanner.train_oof --config-name smoke_yolo
 ```
 
 Полные запуски:
@@ -175,7 +176,10 @@ poetry run price-scanner train-yolo output=runs/yolo_roboflow_5fold_full
 
 Параметры — в `configs/oof`, `configs/train_oof.yaml`; `CUDA_VISIBLE_DEVICES=0` выбирает
 разрешённую GPU. MLflow записывает loss, метрики, гиперпараметры, git commit и dirty-флаг.
-Итоговый run содержит графики precision/recall/F1/accuracy/loss. Локально сохраняются
+Контрольные профили используют CPU, две эпохи и по восемь изображений train/validation
+одного fold. Они проверяют инфраструктуру и не заменяют измеренную OOF-метрику.
+[Запуск и протокол MLflow](docs/training_control.md).
+Итоговый run содержит графики метрик; fold-run — историю функций потерь. Локально сохраняются
 checkpoint каждого fold, OOF-предсказания, история и конфигурация.
 
 Подготовка/изменение датасетов: [dataset_preparation](docs/dataset_preparation.md),
@@ -189,6 +193,8 @@ checkpoint каждого fold, OOF-предсказания, история и 
 ```bash
 poetry run price-scanner export output=artifacts/efficient_onnx
 poetry run price-scanner serve-package output=artifacts/efficient_mlflow
+poetry run price-scanner export-yolo
+poetry run price-scanner serve-yolo-package
 ```
 
 ONNX: RGB/ImageNet normalization, float32 NCHW, размер 320, динамический batch;
@@ -207,6 +213,20 @@ poetry run price-scanner export format=tensorrt output=artifacts/efficient_trt
 
 ## Infer
 
+После своего обучения передавайте checkpoint явно: YOLO берёт
+`runs/yolo_roboflow_5fold_full/fold_0/training/weights/last.pt`, EfficientNet —
+`runs/efficient_oof/fold_0/model.pt`. Для нового видео можно выбрать любой заранее
+зафиксированный fold; это deployment-модель, а не OOF-оценка нового видео.
+
+```bash
+poetry run price-scanner infer videos=/absolute/path/to/new_videos yolo_weights=runs/yolo_roboflow_5fold_full/fold_0/training/weights/last.pt efficient_weights=runs/efficient_oof/fold_0/model.pt output=data/new_video_result
+```
+
+Без явных весов известные видео используют новые YOLO из `model_by_video.json`,
+а неизвестные — документированный fold 0. Текущий CPU default включает EfficientNet
+rank и PaddleOCR; VLM выключена. Историческая OOF-метрика 4.1610% относится к
+конфигурации с Qwen3-VL и EfficientNet off.
+
 Для этого ноутбука проверен [CPU-профиль без сервера](docs/laptop_run.md):
 `python -m lenta_price_tag_scanner.commands infer-cpu output=data/my_laptop_run`.
 Он использует полное видео и локальные OCR-веса из DVC; Qwen в этом режиме отключён.
@@ -221,7 +241,7 @@ poetry run price-scanner infer detector_device=cpu max_frames=7 top_k=1 output=d
 Полное видео с Qwen, после задания каталога исходных MP4:
 
 ```bash
-poetry run price-scanner infer videos=/absolute/path/to/videos detector_device=cuda top_k=2 vlm_fallback=true vlm_limit=1000 vlm_name_override=true output=data/video_result
+poetry run price-scanner infer videos=/absolute/path/to/videos detector_device=cuda top_k=2 efficient_mode=off vlm_fallback=true vlm_limit=1000 vlm_name_override=true output=data/video_result
 poetry run python -m scripts.review_video_csv data/video_result
 poetry run python -m lenta_price_tag_scanner.field_extraction data/video_result/submission.csv --output=data/video_result/coverage_recomputed.json
 ```

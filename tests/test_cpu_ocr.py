@@ -42,6 +42,9 @@ class ExtractionTests(unittest.TestCase):
         cents = ([[120, 52], [140, 52], [140, 62], [120, 62]], "99", 0.99)
         self.assertEqual(prominent_price([rubles], 100, 150, 0.7), "")
         self.assertEqual(prominent_price([rubles, cents], 100, 150, 0.7), "129.99")
+        self.assertEqual(
+            prominent_price([rubles, cents], 100, 150, 0.7, dict(min_top_fraction=0.95)), ""
+        )
 
     def test_ambiguous_catalogue_never_autofills(self):
         with tempfile.TemporaryDirectory() as directory:

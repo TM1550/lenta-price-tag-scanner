@@ -82,6 +82,11 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("exposure", rejection_reasons(quality(image), cfg))
         self.assertEqual(preprocess(image, "rectify").size, image.size)
 
+    def test_quality_threshold_override_changes_exposure_measurement(self):
+        image = Image.new("RGB", (100, 150), (240, 240, 240))
+        self.assertEqual(quality(image)["white_fraction"], 0)
+        self.assertEqual(quality(image, dict(white_threshold=230))["white_fraction"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

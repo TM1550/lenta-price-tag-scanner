@@ -61,7 +61,7 @@ def associate(
     """Choose only the nearest observed frame; no maximizing IoU across a time window."""
     if (
         len(bbox) != 4
-        or not all(math.isfinite(v) for v in bbox)
+        or not all(math.isfinite(coordinate) for coordinate in bbox)
         or bbox[2] <= bbox[0]
         or bbox[3] <= bbox[1]
         or not math.isfinite(timestamp)
@@ -191,14 +191,16 @@ def link_rows(truth, predictions, histories, times, threshold, margin, tolerance
         # Select before reading OCR correctness; never pick the answer closest to GT.
         ranked = sorted(
             candidates,
-            key=lambda p: (
-                -p["prediction"]["quality_rank"],
-                -p["link"]["iou"],
-                p["prediction"]["index"],
+            key=lambda candidate: (
+                -candidate["prediction"]["quality_rank"],
+                -candidate["link"]["iou"],
+                candidate["prediction"]["index"],
             ),
         )
         entries[0]["prediction"] = ranked[0]["prediction"]
-        entries[0]["duplicate_prediction_indices"] = [p["prediction"]["index"] for p in ranked[1:]]
+        entries[0]["duplicate_prediction_indices"] = [
+            candidate["prediction"]["index"] for candidate in ranked[1:]
+        ]
     return reference_links, prediction_links
 
 
@@ -333,10 +335,10 @@ def review(output, videos, reference_links):
                 index += 1
                 for entry in pending.pop(index, []):
                     x1, y1, x2, y2 = entry["target"]["bbox"]
-                    h, w = pixels.shape[:2]
+                    frame_height, frame_width = pixels.shape[:2]
                     crop = pixels[
-                        max(0, math.floor(y1)) : min(h, math.ceil(y2)),
-                        max(0, math.floor(x1)) : min(w, math.ceil(x2)),
+                        max(0, math.floor(y1)) : min(frame_height, math.ceil(y2)),
+                        max(0, math.floor(x1)) : min(frame_width, math.ceil(x2)),
                     ]
                     if crop.size:
                         name = f"review_crops/{entry['target']['id']}_gt.jpg"

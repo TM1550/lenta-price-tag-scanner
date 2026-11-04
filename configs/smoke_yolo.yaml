@@ -1,0 +1,13 @@
+defaults:
+  - train_yolo_roboflow
+  - _self_
+smoke: true
+folds: [0]
+output: data/control_runs/yolo
+experiment: lenta_coursework_control
+oof:
+  device: cpu
+  workers: 0
+  batch: 4
+  size: 320
+  amp: false

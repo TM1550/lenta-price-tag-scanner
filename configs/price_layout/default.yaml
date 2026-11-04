@@ -1,0 +1,6 @@
+min_height_fraction: 0.12
+min_top_fraction: 0.40
+min_center_x_fraction: 0.25
+max_cents_height_ratio: 0.6
+cents_top_margin_ratio: 0.2
+cents_bottom_margin_ratio: 0.6

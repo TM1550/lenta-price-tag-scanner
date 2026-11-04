@@ -125,10 +125,10 @@ def main(cfg):
     (output / "sources.json").write_text(json.dumps(sources, indent=2), encoding="utf-8")
     folds = {
         str(i): {
-            "val_videos": [v.name],
-            "train_videos": [other.name for other in videos if other != v],
+            "val_videos": [video.name],
+            "train_videos": [other.name for other in videos if other != video],
         }
-        for i, v in enumerate(videos)
+        for i, video in enumerate(videos)
     }
     (output / "folds.json").write_text(json.dumps(folds, indent=2), encoding="utf-8")
     with zipfile.ZipFile(output / "roboflow_images.zip", "w", zipfile.ZIP_STORED) as archive:

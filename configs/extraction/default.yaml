@@ -1,0 +1,11 @@
+defaults:
+  - /price_layout@price_layout: default
+  - _self_
+name_fraction: 0.43
+max_name_lines: 5
+saturation_threshold: 70
+brightness_threshold: 70
+red_hue_low: 15
+red_hue_high: 165
+yellow_hue_high: 40
+min_color_fraction: 0.20

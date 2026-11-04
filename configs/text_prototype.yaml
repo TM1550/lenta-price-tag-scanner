@@ -1,3 +1,6 @@
+defaults:
+  - image_processing: default
+  - _self_
 source: ../ocr_dataset_all_crops/ocr_dataset_all_crops/images
 labels: null
 crop_manifest: null

@@ -1,5 +1,6 @@
 """Train independent video folds; preserve each dataset's annotation provenance."""
 
+import csv
 import json
 import re
 
@@ -7,6 +8,7 @@ import hydra
 from omegaconf import OmegaConf
 
 from .build_datasets import checksum, resolve, write_json
+from .constants import IMAGENET_MEAN, IMAGENET_STD, METRIC_EPSILON
 from .data_loader import code_version, download_data_with_dvc
 
 
@@ -17,7 +19,7 @@ def prepare(cfg, kind, fold):
     valid = [row for row in rows if row["fold"] == fold]
     assert {row["video"] for row in train}.isdisjoint({row["video"] for row in valid})
     if cfg.smoke:
-        train, valid = train[:8], valid[:8]
+        train, valid = train[: cfg.smoke_samples], valid[: cfg.smoke_samples]
     if not train or not valid:
         raise ValueError("Empty fold")
     return root, train, valid
@@ -37,7 +39,7 @@ def efficient(cfg, fold, output):
         [
             transforms.Resize((cfg.oof.size, cfg.oof.size)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
         ]
     )
 
@@ -89,7 +91,7 @@ def efficient(cfg, fold, output):
         Crops(training), batch_size=cfg.oof.batch, shuffle=True, num_workers=cfg.oof.workers
     )
     trainer = lightning.Trainer(
-        max_epochs=1 if cfg.smoke else cfg.oof.epochs,
+        max_epochs=cfg.smoke_epochs if cfg.smoke else cfg.oof.epochs,
         accelerator=cfg.oof.accelerator,
         devices=1,
         logger=lightning.pytorch.loggers.CSVLogger(str(output), name="history"),
@@ -128,7 +130,7 @@ def efficient(cfg, fold, output):
     metrics = dict(
         precision=precision,
         recall=recall,
-        f1=2 * precision * recall / max(1e-12, precision + recall),
+        f1=2 * precision * recall / max(METRIC_EPSILON, precision + recall),
         accuracy=float((predicted == truth).float().mean()),
         val_loss=float(torch.nn.functional.binary_cross_entropy(scores, torch.tensor(targets))),
     )
@@ -163,10 +165,21 @@ def yolo(cfg, fold, output):
         values = trainer.label_loss_items(trainer.tloss, prefix="train")
         mlflow.log_metrics({key: float(value) for key, value in values.items()}, step=trainer.epoch)
 
+    def use_project_tracking(trainer):
+        # This project owns the active run; prevent a second MLflow integration from
+        # replacing its experiment, conflicting with params or enabling global autolog.
+        for event, handlers in trainer.callbacks.items():
+            trainer.callbacks[event] = [
+                handler
+                for handler in handlers
+                if handler.__module__ != "ultralytics.utils.callbacks.mlflow"
+            ]
+
+    model.add_callback("on_pretrain_routine_start", use_project_tracking)
     model.add_callback("on_train_epoch_end", log_epoch)
     model.train(
         data=str(output / "data.yaml"),
-        epochs=1 if cfg.smoke else cfg.oof.epochs,
+        epochs=cfg.smoke_epochs if cfg.smoke else cfg.oof.epochs,
         imgsz=cfg.oof.size,
         batch=cfg.oof.batch,
         workers=cfg.oof.workers,
@@ -210,7 +223,40 @@ def yolo(cfg, fold, output):
     return {key: float(value) for key, value in result.results_dict.items()}
 
 
-def plots(history, output):
+def training_plots(output, smoke):
+    """Preserve actual per-epoch losses, alongside fold-level evaluation plots."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+
+    destination = output / "plots"
+    destination.mkdir(exist_ok=True)
+    paths = [output / "training/results.csv", *sorted(output.glob("history/*/metrics.csv"))]
+    for path in paths:
+        if not path.is_file():
+            continue
+        with path.open(encoding="utf-8", newline="") as stream:
+            rows = [
+                {key.strip(): value for key, value in row.items()} for row in csv.DictReader(stream)
+            ]
+        if not rows:
+            continue
+        for metric in [key for key in rows[0] if "loss" in key]:
+            values = [(float(row["epoch"]), float(row[metric])) for row in rows if row.get(metric)]
+            if not values:
+                continue
+            figure, axes = plt.subplots()
+            axes.plot([value[0] for value in values], [value[1] for value in values], marker="o")
+            axes.set(
+                xlabel="Epoch", ylabel=metric, title="CPU control run" if smoke else "Training loss"
+            )
+            figure.tight_layout()
+            figure.savefig(destination / (metric.replace("/", "_") + ".png"))
+            plt.close(figure)
+
+
+def plots(history, output, smoke=False):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -228,7 +274,7 @@ def plots(history, output):
         axes.set(
             xlabel="Held-out video fold",
             ylabel=metric,
-            title="OOF metrics (EfficientNet uses teacher labels)",
+            title="Control run: not a quality estimate" if smoke else "Held-out video metrics",
         )
         figure.tight_layout()
         figure.savefig(destination / (metric.replace("/", "_") + ".png"))
@@ -238,7 +284,11 @@ def plots(history, output):
 @hydra.main(version_base=None, config_path="../configs", config_name="train_oof")
 def main(cfg):
     import mlflow
+    import torch
 
+    if cfg.cpu_threads < 1 or cfg.smoke_samples < 2 or cfg.smoke_epochs < 1:
+        raise ValueError("Invalid control-run or CPU resource configuration")
+    torch.set_num_threads(cfg.cpu_threads)
     download_data_with_dvc(cfg.dvc_targets, cfg.pull_dvc)
     if cfg.get("verify_dataset", False):
         if cfg.oof.kind != "yolo":
@@ -268,6 +318,9 @@ def main(cfg):
                     **code_version(),
                     pseudo_labels=any(row.get("source") == "teacher_pseudo" for row in rows),
                     smoke=cfg.smoke,
+                    effective_epochs=cfg.smoke_epochs if cfg.smoke else cfg.oof.epochs,
+                    smoke_samples=cfg.smoke_samples,
+                    cpu_threads=cfg.cpu_threads,
                     manifest_sha256=checksum(resolve(cfg.dataset) / cfg.oof.kind / "manifest.json"),
                     **OmegaConf.to_container(cfg.oof),
                 )
@@ -278,9 +331,11 @@ def main(cfg):
                 {re.sub(r"[^a-zA-Z0-9_./ -]", "_", key): value for key, value in metrics.items()}
             )
             mlflow.log_artifact(str(fold_output / "oof_predictions.json"))
+            training_plots(fold_output, cfg.smoke)
+            mlflow.log_artifacts(str(fold_output / "plots"), artifact_path="training_plots")
             history.append(dict(fold=fold, metrics=metrics))
             write_json(output / "metrics.json", history)
-    plots(history, output)
+    plots(history, output, cfg.smoke)
     with mlflow.start_run(run_name=f"{cfg.oof.kind}_oof_summary"):
         mlflow.log_params(code_version())
         mlflow.log_param("smoke", cfg.smoke)

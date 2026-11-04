@@ -84,7 +84,7 @@ def select_crops(cfg, output):
                         persist=True,
                         tracker=cfg.tracker,
                         conf=cfg.detector_conf,
-                        iou=0.5,
+                        iou=cfg.get("detector_iou", 0.5),
                         imgsz=cfg.imgsz,
                         device=cfg.detector_device,
                         verbose=False,
@@ -118,7 +118,7 @@ def select_crops(cfg, output):
                         track = previous["track"]
                         observed.add(track)
                         crop = Image.fromarray(cv2.cvtColor(frame[y1:y2, x1:x2], cv2.COLOR_BGR2RGB))
-                        values = quality(crop)
+                        values = quality(crop, cfg.quality)
                         reasons = rejection_reasons(values, cfg.quality)
                         classifier_score = None
                         if classifier is not None and not reasons:
@@ -226,6 +226,7 @@ def recognize(cfg, output, tracks):
                     reader.last_size,
                     cfg.price_template_field,
                     cfg.ocr_confidence,
+                    cfg.get("extraction"),
                 )
                 observations.append(
                     dict(
@@ -258,7 +259,15 @@ def recognize(cfg, output, tracks):
                     image = original.convert("RGB").rotate(cfg.rotation_ccw, expand=True)
                 fallback_text, truncated = fallback.read(image)
                 fallback_count += 1
-                proposed, _ = crop_fields(image, fallback_text, [], image.size, "", 0.5)
+                proposed, _ = crop_fields(
+                    image,
+                    fallback_text,
+                    [],
+                    image.size,
+                    "",
+                    cfg.ocr_confidence,
+                    cfg.get("extraction"),
+                )
                 # Never overwrite decoded/consensus fields; fallback suggestions remain traceable.
                 for key, value in proposed.items():
                     if (
@@ -276,7 +285,7 @@ def recognize(cfg, output, tracks):
                     if valid_gtin(fields.get(key, ""))
                 }
                 matched, suggestions = match_catalog(
-                    connection, codes, fields.get("product_name", ""), 5
+                    connection, codes, fields.get("product_name", ""), cfg.get("catalogue_top_k", 5)
                 )
                 if matched:
                     fields["product_name"] = matched["fullname"]

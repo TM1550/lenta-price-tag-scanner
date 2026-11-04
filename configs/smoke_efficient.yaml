@@ -1,0 +1,12 @@
+defaults:
+  - train_oof
+  - _self_
+smoke: true
+folds: [0]
+output: data/control_runs/efficient
+experiment: lenta_coursework_control
+oof:
+  accelerator: cpu
+  workers: 0
+  batch: 4
+  size: 128

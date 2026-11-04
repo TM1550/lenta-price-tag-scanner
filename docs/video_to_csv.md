@@ -3,7 +3,20 @@
 Реализован единый запуск `python -m lenta_price_tag_scanner.video_to_csv`. Все модели
 работают локально; изображения и база товаров не отправляются во внешние API.
 
-## Результат полного прогона пяти видео
+## Актуальные режимы
+
+Текущий default: новые YOLO по видео → трекер → EfficientNet rank → PaddleOCR CPU
+→ QR/EAN → каталог → CSV. VLM включается явно. Зафиксированная полная OOF-оценка
+с PaddleOCR + Qwen3-VL и EfficientNet off: **154/3701 = 4.1610%**;
+[результаты](video_oof_results.md). Она отличается от исторического coverage ниже.
+
+Настройки извлечения полей находятся в `configs/extraction/default.yaml`, геометрия
+цен — `configs/price_layout/default.yaml`, обработка изображения и генерация VLM —
+`configs/image_processing/default.yaml`. Пример override:
+`extraction.name_fraction=0.43 ocr.image_processing.clahe_clip=2.0`.
+Вынесение параметров сохранило прежние значения и не является подбором качества.
+
+## Исторический результат полного прогона пяти видео
 
 Файлы на ноутбуке: `data/video_csv_v2/pipeline_final/submission.csv`, `review.html`,
 `metrics.json`, `coverage_recomputed.json`, `vlm_ablation.json`, `details.jsonl` и PNG-кропы.

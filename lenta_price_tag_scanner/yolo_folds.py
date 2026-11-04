@@ -26,7 +26,7 @@ def label_count(path, class_count):
         values = [float(value) for value in line.split()]
         if len(values) != 5 or not all(math.isfinite(value) for value in values):
             raise ValueError(f"Invalid detection label: {path}")
-        cls, x, y, width, height = values
+        cls, center_x, center_y, width, height = values
         if (
             cls != int(cls)
             or not 0 <= cls < class_count
@@ -34,8 +34,8 @@ def label_count(path, class_count):
         ):
             raise ValueError(f"Invalid class or dimensions: {path}")
         if not (
-            width / 2 - 1e-8 <= x <= 1 - width / 2 + 1e-8
-            and height / 2 - 1e-8 <= y <= 1 - height / 2 + 1e-8
+            width / 2 - 1e-8 <= center_x <= 1 - width / 2 + 1e-8
+            and height / 2 - 1e-8 <= center_y <= 1 - height / 2 + 1e-8
         ):
             raise ValueError(f"Box outside image: {path}")
     return len(lines)

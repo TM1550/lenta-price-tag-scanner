@@ -4,19 +4,22 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from .constants import CROP_QUALITY_DEFAULTS, IMAGE_PROCESSING_DEFAULTS
 
-def quality(image):
+
+def quality(image, options=None):
+    options = {**CROP_QUALITY_DEFAULTS, **(options or {})}
     pixels = np.asarray(image.convert("RGB"))
     gray = cv2.cvtColor(pixels, cv2.COLOR_RGB2GRAY)
     # Fixed short side keeps sharpness scores comparable between crop sizes.
-    ratio = 160 / min(gray.shape)
+    ratio = options["short_side"] / min(gray.shape)
     normalized = cv2.resize(gray, None, fx=ratio, fy=ratio, interpolation=cv2.INTER_AREA)
     return dict(
         min_side=min(gray.shape),
         sharpness=float(cv2.Laplacian(normalized, cv2.CV_64F).var()),
         contrast=float(gray.std()),
-        white_fraction=float((gray > 250).mean()),
-        black_fraction=float((gray < 5).mean()),
+        white_fraction=float((gray > options["white_threshold"]).mean()),
+        black_fraction=float((gray < options["black_threshold"]).mean()),
     )
 
 
@@ -34,17 +37,25 @@ def rejection_reasons(values, cfg):
     return reasons
 
 
-def rectify(pixels):
+def rectify(pixels, options=None):
+    options = {**IMAGE_PROCESSING_DEFAULTS, **(options or {})}
     gray = cv2.cvtColor(pixels, cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(gray, 60, 150)
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    edges = cv2.Canny(gray, options["canny_lower"], options["canny_upper"])
+    kernel = options["closing_kernel"]
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((kernel, kernel), np.uint8))
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     height_pixels, width_pixels = gray.shape
-    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:8]:
-        poly = cv2.approxPolyDP(contour, 0.025 * cv2.arcLength(contour, True), True)
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[: options["contour_limit"]]:
+        poly = cv2.approxPolyDP(
+            contour, options["polygon_epsilon"] * cv2.arcLength(contour, True), True
+        )
         if len(poly) != 4 or not cv2.isContourConvex(poly):
             continue
-        if not 0.65 <= cv2.contourArea(poly) / (height_pixels * width_pixels) <= 0.99:
+        if (
+            not options["min_area_fraction"]
+            <= cv2.contourArea(poly) / (height_pixels * width_pixels)
+            <= options["max_area_fraction"]
+        ):
             continue
         points = poly[:, 0].astype(np.float32)
         sums, diffs = points.sum(axis=1), np.diff(points, axis=1).ravel()
@@ -64,7 +75,7 @@ def rectify(pixels):
         height = round(
             max(np.linalg.norm(ordered[0] - ordered[3]), np.linalg.norm(ordered[1] - ordered[2]))
         )
-        if min(width, height) < 24:
+        if min(width, height) < options["min_rectified_side"]:
             continue
         target = np.float32([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]])
         return cv2.warpPerspective(
@@ -76,18 +87,29 @@ def rectify(pixels):
     return pixels
 
 
-def preprocess(image, mode):
+def preprocess(image, mode, options=None):
+    options = {**IMAGE_PROCESSING_DEFAULTS, **(options or {})}
     if mode == "none":
         return image
     pixels = np.asarray(image.convert("RGB"))
     if mode in ("rectify", "rectify_clahe"):
-        pixels = rectify(pixels)
+        pixels = rectify(pixels, options)
     if mode in ("clahe", "rectify_clahe"):
         lab = cv2.cvtColor(pixels, cv2.COLOR_RGB2LAB)
-        lab[:, :, 0] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4)).apply(lab[:, :, 0])
+        grid = options["clahe_grid"]
+        lab[:, :, 0] = cv2.createCLAHE(
+            clipLimit=options["clahe_clip"], tileGridSize=(grid, grid)
+        ).apply(lab[:, :, 0])
         pixels = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
     if mode == "sharpen":
-        pixels = cv2.addWeighted(pixels, 1.5, cv2.GaussianBlur(pixels, (0, 0), 1), -0.5, 0)
+        amount = options["sharpen_amount"]
+        pixels = cv2.addWeighted(
+            pixels,
+            1 + amount,
+            cv2.GaussianBlur(pixels, (0, 0), options["sharpen_sigma"]),
+            -amount,
+            0,
+        )
     if mode not in {"rectify", "rectify_clahe", "clahe", "sharpen"}:
         raise ValueError(f"Unknown preprocessing: {mode}")
     return Image.fromarray(pixels)
