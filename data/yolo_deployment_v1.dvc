@@ -1,0 +1,6 @@
+outs:
+- md5: 78f7b3edb9c931f52f078b389234675c.dir
+  size: 30220044
+  nfiles: 51
+  hash: md5
+  path: yolo_deployment_v1

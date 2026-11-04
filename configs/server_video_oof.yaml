@@ -1,0 +1,9 @@
+execute: false
+dataset: data/yolo_roboflow_5fold_v1
+videos: data/runtime_assets/videos
+output: ../results/video_oof_v1
+plan_directory: ../artifacts/oof_plan
+qwen_model: ../models/qwen3_vl_4b
+mlflow_uri: null
+min_free_gib: 12
+expected_folds: 5

@@ -1,0 +1,23 @@
+Coursework requirements audit, 2026-11-04.
+Source: lecturer homework PDF, original project DOCX, current source/configs and actual artifacts.
+All 8 pre-commit hooks passed on an isolated copy of all 167 publication-candidate files.
+52 CPU unit tests passed. pip check: no broken requirements found.
+CLI config composition passed: train, train-yolo, infer, export, serve-package.
+65 code/config/server-script files match the SHA256 inventory of the actual OOF run.
+Tracked forbidden data/model extensions and .dvc/config.local: zero.
+Public GitHub main b29b8cdb8f039e9ba51b2084bb79f1f7f34b9e9f; its CI successful.
+Latest OOF and tracker-evaluation source files/pointers are still local, unpublished changes.
+Five YOLO folds: 100 epochs each; correct held-out checkpoint and train-video separation verified.
+Final automatic-association score: 154/3701, micro 0.04161037557416914, macro 0.04389620743878708.
+Local DVC final snapshot 9c6ef68da5d38e9f570b1aa8fe70f01a.dir: 1361 files.
+SHA256 manifest verification: 1358 files. All 1352 unique remote file objects verified by MD5.
+MLflow: six FINISHED runs, losses/metrics/params present, but git_commit=uncommitted in all six.
+Source tree on server had no .git. Source SHA256 inventory exists, preserving honest provenance.
+MLflow final field-score logging and full DB/artifacts transfer remain review comments.
+Lector grading access to prepared DVC data is not available merely by cloning the public repo.
+Repository name Design_ML_system fails the stated meaningful-kebab-case requirement.
+Four production modules contain one-letter names; some tunable thresholds remain inline literals.
+Ultralytics lecture-framework approval cannot be established from provided files.
+ONNX/HTTP Serving proof is historical and concerns EfficientNet crop classification only.
+No training, GPU work, Git publication, repository renaming or model-code fixes performed in this audit.
+Detailed findings: docs/compliance.md. Evidence: ../server_results/coursework_audit_20261104/.

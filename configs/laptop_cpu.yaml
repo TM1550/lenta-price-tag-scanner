@@ -7,6 +7,7 @@ output: data/laptop_video_csv
 dvc_targets:
   - data/inference_assets.dvc
   - data/runtime_assets.dvc
+  - data/video_oof_20261104.dvc
 detector_device: cpu
 top_k: 2
 vlm_fallback: false

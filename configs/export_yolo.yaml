@@ -1,0 +1,14 @@
+checkpoint: data/video_oof_20261104/models/fold_0.pt
+example: data/yolo_roboflow_5fold_v1/yolo/images/25_12-20/25_12-20__f0000008__t000000421ms_jpg.rf.956539b2327279454520969056ee19c7.jpg
+output: data/yolo_deployment_v1/onnx
+pull_dvc: true
+dvc_targets: [data/video_oof_20261104.dvc, data/yolo_roboflow_5fold_v1.dvc]
+imgsz: 1280
+conf: 0.25
+iou: 0.5
+opset: 17
+rtol: 0.001
+atol: 0.02
+hydra:
+  job:
+    chdir: false

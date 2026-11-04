@@ -8,6 +8,12 @@
 - [Видео → CSV](video_to_csv.md): устройство итогового пайплайна.
 - [OOF по эталонным кадрам](timestamp_oof_run.md): выполненный расчёт и ограничения.
 - [Правильность заполнения полей](field_validation.md): правила scorer.
+- [Оценка через треки](track_evaluation.md): связь эталонного ценника, кропа и строки OCR CSV.
+- [Серверный полный OOF](server_oof_preparation.md): изолированная папка и сценарий будущего запуска.
+- [Установленный runtime и очередь GPU0](server_oof_execution.md): фактическая установка, проверки и состояние запуска.
+- [Готовые YOLO-модели и OOF-результаты](video_oof_results.md): завершены все пять видео, метрика 154/3701 = 4,1610%; модели и отчёты перенесены, DVC обновлён.
+- [Автоматический перенос OOF](oof_auto_transfer.md): ожидание пяти отчётов, проверка, скачивание и обновление локального DVC.
+- [Очистка папки ноутбука](workspace_cleanup.md): удалённые проверенные дубли и сохранённые данные.
 - [Псевдоразметка](pseudo_labels.md): новый датасет и folds.
 - [DVC и перенос с сервера](dvc_handoff.md): временный remote и переход к командному.
 - [Очистка Git-истории](git_history_cleanup.md): проверка секретов и порядок публикации.
@@ -16,6 +22,9 @@
 
 ## Подготовка данных и эксперименты
 
+- [Кадры для новой разметки YOLO](annotation_frames.md): пакет для SAM3/Roboflow и группировка OOF.
+- [Очистка экспорта Roboflow](clean_yolo_labels.md): полигоны в bbox, NMS и удаление мелких объектов.
+- [Новый YOLO OOF: 5 folds](yolo_roboflow_oof.md): готовый датасет, конфиги и команды обучения.
 - [Подготовка датасетов](dataset_preparation.md), [OOF-обучение](oof_training.md).
 - [Проверка EfficientNet](efficient_review.md).
 - [CPU OCR](cpu_ocr.md), [OCR-инференс](ocr_inference.md), [исследование OCR/VLM](ocr_vlm_research.md).

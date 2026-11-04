@@ -1,0 +1,9 @@
+videos: data/runtime_assets/videos
+pattern: "*.mp4"
+tracking_run: data/video_csv_v2/pipeline_final
+prediction_run: data/video_csv_v2/pipeline_final
+output: data/track_evaluation_v1
+iou_threshold: 0.5
+ambiguity_margin: 0.1
+time_tolerance_ms: 100
+cpu_threads: 4

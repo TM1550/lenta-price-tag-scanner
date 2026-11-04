@@ -1,0 +1,6 @@
+videos: data/runtime_assets/videos
+output: data/yolo_annotation_v2
+interval_ms: 500
+candidate_step_ms: 100
+jpeg_quality: 97
+threads: 4

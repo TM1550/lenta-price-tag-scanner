@@ -1,0 +1,13 @@
+kind: yolo
+architecture: yolov8n.yaml
+epochs: 100
+batch: 8
+size: 1280
+lr: 0.001
+optimizer: AdamW
+weight_decay: 0.0005
+workers: 2
+device: 0
+cache: false
+amp: true
+predict_conf: 0.001

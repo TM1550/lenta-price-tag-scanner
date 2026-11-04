@@ -1,0 +1,4 @@
+defaults:
+  - export_yolo
+  - _self_
+output: data/yolo_deployment_v1/mlflow

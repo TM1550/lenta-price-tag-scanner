@@ -1,0 +1,13 @@
+2026-11-04: all5 YOLO folds completed100epochs; full video OOF pending one video.
+Detector mAP50-95: fold0 .812076, fold1 .895207, fold2 .843648, fold3 .849782, fold4 .410931.
+Completed video field scores:25_12-20 43/745,25_2-10 16/775,26_12-20 55/1001,43_15 28/395.
+No final overall field metric:49_5.mp4 still waits for GPU0.
+Original runner stopped on GPU0 occupancy before last pipeline; failure log preserved.
+Recovery PID666689 waits3idle probes30s apart, capped6h, no retraining, no GPU1.
+Ready artifacts copied to data/video_oof_20261104:5last.pt models and4completed report/crop folders.
+Archive140MB,1170manifest files/155333352bytes; allSHA256 verified locally.
+Archive SHA256:fd8d168e2277a57f5f44d6429a65067fbd0f34e2accd79bdc0122c09aad85046
+All5models loaded on laptop CPU; fold3singleframe640inference completed,8boxes.
+This is an execution check, not another quality metric.
+DVC target:data/video_oof_20261104.dvc; saved to local laptop-temp remote.
+Automatic tag associations are not manually confirmed; results are not an official hackathon score.

@@ -1,4 +1,4 @@
-"""Video -> ByteTrack -> quality-ranked crops -> OCR/QR -> catalogue -> CSV/coverage."""
+"""Video -> tracker -> quality-ranked crops -> OCR/QR -> catalogue -> CSV/coverage."""
 
 import csv
 import gc
@@ -16,6 +16,7 @@ from .build_datasets import checksum, resolve, write_json
 from .cpu_ocr import FIELDS, catalogue, match_catalog, valid_gtin
 from .crop_quality import quality, rejection_reasons
 from .data_loader import code_version, download_data_with_dvc
+from .detector_assets import classifier_selection, detector_for_video
 from .field_extraction import CONTENT_FIELDS, compatible_observations, coverage, crop_fields, fuse
 from .text_prototype import TextReader
 
@@ -37,33 +38,21 @@ def select_crops(cfg, output):
     torch.set_num_threads(cfg.ocr.cpu_threads)
     cv2.setNumThreads(cfg.ocr.cpu_threads)
     classifier, transform = None, None
-    if cfg.efficient_weights:
-        import timm
-        from torchvision import transforms
+    efficient_mode = cfg.get("efficient_mode", "filter" if cfg.efficient_weights else "off")
+    if cfg.efficient_weights and efficient_mode != "off":
+        from .classifier import load_classifier
 
-        checkpoint = torch.load(
-            resolve(cfg.efficient_weights), map_location="cpu", weights_only=True
-        )
-        if checkpoint.get("color") != "RGB" or checkpoint.get("positive_class") != 1:
-            raise ValueError("Use a new RGB EfficientNet checkpoint with preprocessing metadata")
-        classifier = timm.create_model(checkpoint["architecture"], pretrained=False, num_classes=1)
-        classifier.load_state_dict(checkpoint["state_dict"])
-        classifier.eval()  # Optional CPU gate, avoiding competition for detector GPU memory.
-        transform = transforms.Compose(
-            [
-                transforms.Resize((checkpoint["size"], checkpoint["size"])),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            ]
-        )
+        classifier, transform, _ = load_classifier(resolve(cfg.efficient_weights))
     videos = sorted(resolve(cfg.videos).glob(cfg.pattern))
-    if not videos or not resolve(cfg.yolo_weights).is_file():
-        raise ValueError("Local videos or detector weights not found")
+    if not videos:
+        raise ValueError("Local videos not found")
+    detectors = {video.name: detector_for_video(cfg, video) for video in videos}
+    write_json(output / "detectors.json", detectors)
     all_tracks = []
     counts = Counter()
     with (output / "filter_audit.jsonl").open("w", encoding="utf-8") as audit:
         for video in videos:
-            detector = YOLO(str(resolve(cfg.yolo_weights)))  # Reset tracker between videos.
+            detector = YOLO(detectors[video.name]["checkpoint"])  # Reset tracker per video.
             capture = cv2.VideoCapture(str(video))
             fps = capture.get(cv2.CAP_PROP_FPS)
             if not capture.isOpened() or not math.isfinite(fps) or fps <= 0:
@@ -72,6 +61,7 @@ def select_crops(cfg, output):
             states = {}
             next_track = 0
             frame_index = -1
+            previous_timestamp = -1.0
             try:
                 while True:
                     ok, frame = capture.read()
@@ -80,6 +70,12 @@ def select_crops(cfg, output):
                     frame_index += 1
                     if cfg.max_frames and frame_index >= cfg.max_frames:
                         break
+                    timestamp = float(capture.get(cv2.CAP_PROP_POS_MSEC))
+                    if not math.isfinite(timestamp) or timestamp <= previous_timestamp:
+                        raise ValueError(
+                            f"Non-increasing decoder timestamp: {video}, frame {frame_index}"
+                        )
+                    previous_timestamp = timestamp
                     if frame_index % cfg.stride:
                         continue
                     counts["sampled_frames"] += 1
@@ -106,7 +102,6 @@ def select_crops(cfg, output):
                         if x2 <= x1 or y2 <= y1:
                             counts["invalid_bbox"] += 1
                             continue
-                        timestamp = frame_index / fps * 1000
                         bbox = [x1, y1, x2, y2]
                         previous = states.get(tracker_id)
                         if (
@@ -131,18 +126,29 @@ def select_crops(cfg, output):
                                 classifier_score = float(
                                     torch.sigmoid(classifier(transform(crop).unsqueeze(0))).item()
                                 )
-                            if classifier_score < cfg.efficient_threshold:
-                                reasons.append("efficientnet")
+                        base_rank = math.log1p(values["sharpness"]) * math.sqrt(values["min_side"])
+                        rank, classifier_rejected = classifier_selection(
+                            base_rank,
+                            classifier_score,
+                            efficient_mode,
+                            cfg.efficient_threshold,
+                            cfg.get("efficient_rank_weight", 0.5),
+                        )
+                        if classifier_rejected:
+                            reasons.append("efficientnet")
                         record = dict(
                             filename=video.name,
                             track_id=track,
+                            tracker_id=tracker_id,
                             frame_index=frame_index,
-                            frame_timestamp=frame_index / fps * 1000,
+                            frame_timestamp=timestamp,
+                            timestamp_source="decoder_pts",
                             bbox_xyxy=[x1, y1, x2, y2],
                             quality=values,
                             detector_score=float(box.conf.item()),
                             rejected=reasons,
                             classifier_score=classifier_score,
+                            efficient_mode=efficient_mode,
                         )
                         audit.write(json.dumps(record) + "\n")
                         if reasons:
@@ -151,7 +157,6 @@ def select_crops(cfg, output):
                                 counts["reject_" + reason] += 1
                             continue
                         counts["accepted_crops"] += 1
-                        rank = math.log1p(values["sharpness"]) * math.sqrt(values["min_side"])
                         record["rank"] = rank
                         # Store only top K crops, not every frame of a track.
                         entries = candidates[track]
@@ -286,6 +291,7 @@ def recognize(cfg, output, tracks):
                 json.dumps(
                     dict(
                         track_id=track["track_id"],
+                        csv_row_index=len(rows) - 1,
                         filename=track["filename"],
                         fields=row,
                         observations=observations,
@@ -321,7 +327,7 @@ def recognize(cfg, output, tracks):
     )
     metrics["vlm_fallback_calls"] = fallback_count
     metrics["identity_note"] = (
-        "One row per bounded ByteTrack segment; fragmentation can duplicate physical tags."
+        "One row per bounded tracker segment; fragmentation can duplicate physical tags."
     )
     write_json(output / "metrics.json", metrics)
     return metrics
@@ -336,6 +342,12 @@ def main(cfg):
         raise ValueError("Invalid rotation")
     if cfg.price_template_field not in ("", "price_card", "price_default"):
         raise ValueError("Invalid template price assignment")
+    efficient_mode = cfg.get("efficient_mode", "filter" if cfg.efficient_weights else "off")
+    classifier_selection(
+        1, None, efficient_mode, cfg.efficient_threshold, cfg.get("efficient_rank_weight", 0.5)
+    )
+    if efficient_mode != "off" and not cfg.efficient_weights:
+        raise ValueError("Enabled EfficientNet requires efficient_weights")
     output = resolve(cfg.output)
     output.mkdir(parents=True, exist_ok=False)
     OmegaConf.save(cfg, output / "config.yaml")
@@ -347,10 +359,29 @@ def main(cfg):
         # Reuse bounded local crops without repeating detector execution.
         import shutil
 
-        for name in ("detection_summary.json", "filter_audit.jsonl", "ocr_inputs.jsonl"):
+        for name in (
+            "detection_summary.json",
+            "filter_audit.jsonl",
+            "ocr_inputs.jsonl",
+            "detectors.json",
+        ):
             artifact = original_root / name
             if artifact.is_file():
                 shutil.copyfile(artifact, output / name)
+        if not (output / "detectors.json").is_file():
+            source_metrics = original_root / "metrics.json"
+            previous = json.loads(source_metrics.read_text()) if source_metrics.is_file() else {}
+            write_json(
+                output / "detectors.json",
+                {
+                    track["filename"]: dict(
+                        source="reused_detections",
+                        checkpoint=None,
+                        sha256=previous.get("yolo_sha256"),
+                    )
+                    for track in tracks
+                },
+            )
         write_json(
             output / "detection_source.json",
             dict(
@@ -381,7 +412,15 @@ def main(cfg):
     metrics = recognize(cfg, output, tracks)
     metrics["total_seconds"] = time.perf_counter() - tick
     metrics["timing_scope"] = "OCR with reused detections" if cfg.resume_tracks else "video to CSV"
-    metrics["yolo_sha256"] = checksum(resolve(cfg.yolo_weights))
+    metrics["detectors"] = json.loads((output / "detectors.json").read_text())
+    detector_hashes = {value["sha256"] for value in metrics["detectors"].values()}
+    metrics["yolo_sha256"] = next(iter(detector_hashes)) if len(detector_hashes) == 1 else None
+    metrics["efficient_mode"] = "reused_selection" if cfg.resume_tracks else efficient_mode
+    metrics["efficient_sha256"] = (
+        checksum(resolve(cfg.efficient_weights))
+        if not cfg.resume_tracks and efficient_mode != "off"
+        else None
+    )
     metrics["code_version"] = code_version()
     write_json(output / "metrics.json", metrics)
     print(

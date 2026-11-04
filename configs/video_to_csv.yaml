@@ -3,9 +3,16 @@ defaults:
   - _self_
 videos: data/inference_assets/videos
 pattern: "*.mp4"
-yolo_weights: data/inference_assets/price_tag.pt
+yolo_weights: null
+yolo_model_map: data/video_oof_20261104/model_by_video.json
+yolo_default_weights: data/video_oof_20261104/models/fold_0.pt
 pull_dvc: true
-dvc_targets: [data/inference_assets.dvc, data/runtime_assets.dvc]
+dvc_targets:
+  [
+    data/inference_assets.dvc,
+    data/runtime_assets.dvc,
+    data/video_oof_20261104.dvc,
+  ]
 output: data/video_csv
 resume_tracks: null
 stride: 3
@@ -19,8 +26,10 @@ track_min_iou: 0.15
 imgsz: 1280
 detector_conf: 0.25
 detector_device: cpu
-efficient_weights: null
+efficient_weights: data/inference_assets/efficient.pt
+efficient_mode: rank
 efficient_threshold: 0.5
+efficient_rank_weight: 0.5
 rotation_ccw: 90
 quality:
   min_side: 40

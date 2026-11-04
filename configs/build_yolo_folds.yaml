@@ -1,0 +1,4 @@
+source: data/yolo_roboflow_clean_v1
+output: data/yolo_roboflow_5fold_v1
+expected_folds: 5
+exclude_empty: true

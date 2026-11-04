@@ -1,0 +1,6 @@
+outs:
+- md5: aa162ce1d3bc3a034c7928c1aeb41171.dir
+  size: 413402348
+  nfiles: 809
+  hash: md5
+  path: yolo_roboflow_5fold_v1

@@ -1,4 +1,4 @@
-"""Five video folds; metrics measure pseudo-label agreement, not human accuracy."""
+"""Train independent video folds; preserve each dataset's annotation provenance."""
 
 import json
 import re
@@ -143,6 +143,8 @@ def yolo(cfg, fold, output):
     import mlflow
     from ultralytics import YOLO
 
+    if not str(cfg.oof.architecture).endswith((".yaml", ".yml")):
+        raise ValueError("Independent OOF training requires a fresh YOLO architecture YAML")
     root, training, validation = prepare(cfg, "yolo", fold)
     for name, rows in [("train", training), ("val", validation)]:
         (output / f"{name}.txt").write_text(
@@ -170,6 +172,10 @@ def yolo(cfg, fold, output):
         workers=cfg.oof.workers,
         device=cfg.oof.device,
         lr0=cfg.oof.lr,
+        optimizer=cfg.oof.get("optimizer", "auto"),
+        weight_decay=cfg.oof.get("weight_decay", 0.0005),
+        cache=cfg.oof.get("cache", False),
+        amp=cfg.oof.get("amp", True),
         seed=cfg.seed + fold,
         project=str(output),
         name="training",
@@ -185,13 +191,19 @@ def yolo(cfg, fold, output):
         data=str(output / "data.yaml"),
         imgsz=cfg.oof.size,
         device=cfg.oof.device,
+        batch=cfg.oof.batch,
+        workers=cfg.oof.workers,
         project=str(output),
         name="evaluation",
     )
     predictions = []
     for row in validation:
         result_image = trained.predict(
-            str(root / row["image"]), imgsz=cfg.oof.size, device=cfg.oof.device, verbose=False
+            str(root / row["image"]),
+            imgsz=cfg.oof.size,
+            device=cfg.oof.device,
+            conf=cfg.oof.get("predict_conf", 0.25),
+            verbose=False,
         )[0]
         predictions.append(dict(**row, detections=result_image.boxes.data.cpu().tolist()))
     write_json(output / "oof_predictions.json", predictions)
@@ -228,6 +240,12 @@ def main(cfg):
     import mlflow
 
     download_data_with_dvc(cfg.dvc_targets, cfg.pull_dvc)
+    if cfg.get("verify_dataset", False):
+        if cfg.oof.kind != "yolo":
+            raise ValueError("This profile validates a video-grouped YOLO dataset")
+        from .yolo_folds import validate_dataset
+
+        validate_dataset(resolve(cfg.dataset), cfg.expected_folds)
     rows = json.loads((resolve(cfg.dataset) / cfg.oof.kind / "manifest.json").read_text())
     available = sorted({row["fold"] for row in rows})
     selected = available if cfg.folds is None else list(cfg.folds)

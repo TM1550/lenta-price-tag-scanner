@@ -1,0 +1,20 @@
+2026-11-04: server OOF preparation, not a training/inference result.
+Workspace: /home/ozon_hack/lenta-oof-20261104
+858 input files / 941560678 bytes verified by SHA256.
+77 source/config/test/bootstrap files verified by SHA256.
+YOLO dataset: 391 images, 2593 boxes, five whole-video folds.
+Minimal isolated Python environment installed; pip check passed.
+19 server preparation tests passed; bash syntax checks passed.
+Five full-pipeline configs generated; execute=false; GPU hidden by default.
+Full recipe prepared: fresh 100-epoch YOLO per fold -> BoT-SORT -> Paddle CPU
++ pinned Qwen3-VL-4B GPU -> QR/exact-code catalogue -> CSV -> track association.
+No training, GPU inference or full CUDA/Qwen installation performed.
+No project processes remain. No OOF score has been computed.
+User explicitly deferred training and selected minimal environment until free disk is available.
+Full installer command was rejected by automatic approval review due to shared-disk risk.
+Continued only safe checks without --install; no bypass attempted.
+Final disk snapshot: 5.18 GiB free; full installer requires 35 GiB free.
+GPU0 occupied by competition; GPU1 forbidden and untouched.
+Competition files/global packages/configurations were not modified.
+Local evidence: ../server_results/oof_server_20261104/server_evidence/
+Evidence archive SHA256: 09fc50375013b7657f58735686ac0504eb15a1bb955b864b110f69982562e35a

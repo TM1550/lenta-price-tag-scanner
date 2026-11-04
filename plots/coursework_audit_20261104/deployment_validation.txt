@@ -1,0 +1,12 @@
+Deployment verification, 2026-11-04, CPU only; GPU 1 never used.
+Unit tests: 55 passed. pip check: no broken requirements.
+YOLO ONNX opset 17, imgsz 1280, dynamic: checker passed.
+Real frame parity: 8 detections; max absolute error 0.000244140625.
+MLflow 3.17.2 PyFunc roundtrip: 8 detections.
+Local MLflow HTTP /invocations: 200; predictions equal local PyFunc.
+ONNX and MLflow artifacts: data/yolo_deployment_v1.dvc; pushed to laptop-temp.
+CPU video smoke: 43_15.mp4, max_frames=120, fold_3 checkpoint selected from map.
+EfficientNet mode=rank: 415/415 crops scored; no hard probability rejection.
+CSV: 23 rows; 48/529 filled cells; 254.368 seconds.
+This smoke measures execution, not new OOF accuracy.
+Historical OOF remains 154/3701 with PaddleOCR + Qwen3-VL and EfficientNet off.

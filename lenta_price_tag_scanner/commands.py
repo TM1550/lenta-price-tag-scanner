@@ -10,7 +10,19 @@ from hydra import compose, initialize_config_module
 @click.argument(
     "command",
     type=click.Choice(
-        ["train", "infer", "infer-cpu", "ocr", "export", "download", "serve-package"]
+        [
+            "train",
+            "train-yolo",
+            "infer",
+            "infer-cpu",
+            "track-eval",
+            "ocr",
+            "export",
+            "export-yolo",
+            "download",
+            "serve-package",
+            "serve-yolo-package",
+        ]
     ),
 )
 @click.argument("overrides", nargs=-1, type=click.UNPROCESSED)
@@ -18,12 +30,16 @@ from hydra import compose, initialize_config_module
 def main(command, overrides, show_config):
     routes = {
         "train": ("train_oof", "train_oof"),
+        "train-yolo": ("train_oof", "train_yolo_roboflow"),
         "infer": ("video_to_csv", "video_to_csv"),
         "infer-cpu": ("video_to_csv", "laptop_cpu"),
+        "track-eval": ("evaluate_tracks", "evaluate_tracks"),
         "ocr": ("text_prototype", "text_prototype"),
         "export": ("export_model", "export"),
+        "export-yolo": ("export_yolo", "export_yolo"),
         "download": ("download", "download"),
         "serve-package": ("serving", "serving"),
+        "serve-yolo-package": ("serving_yolo", "serving_yolo"),
     }
     module_name, config_name = routes[command]
     with initialize_config_module(config_module="configs", version_base=None):

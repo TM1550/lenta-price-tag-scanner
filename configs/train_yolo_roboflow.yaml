@@ -1,0 +1,12 @@
+defaults:
+  - train_oof
+  - override oof: yolo_roboflow
+  - _self_
+
+dataset: data/yolo_roboflow_5fold_v1
+output: runs/yolo_roboflow_5fold_v1
+folds: [0, 1, 2, 3, 4]
+experiment: lenta_yolo_roboflow_5fold
+dvc_targets: [data/yolo_roboflow_5fold_v1.dvc]
+verify_dataset: true
+expected_folds: 5

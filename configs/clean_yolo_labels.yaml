@@ -1,0 +1,6 @@
+source: ../price_tags.v1i.yolov8
+output: data/yolo_roboflow_clean_v1
+frame_manifest: data/yolo_annotation_v2/manifest.json
+iou_threshold: 0.5
+min_side_px: 16
+preview_limit: 30

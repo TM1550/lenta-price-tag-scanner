@@ -1,0 +1,17 @@
+2026-11-04: full server runtime installed and OOF training started.
+Workspace: /home/ozon_hack/lenta-oof-20261104
+Full runtime pip check passed; 22 regression tests passed.
+Qwen3-VL-4B-Instruct revision ebb281ec70b05090aa6165b016eac8ec08e71b17 downloaded.
+Both model shards verified against official pinned LFS SHA256.
+Paddle CPU read and Qwen processor load passed with CUDA hidden.
+YOLO CPU one-epoch smoke passed; its zero mAP is not a quality estimate.
+GPU0 became idle and passed three consecutive admission checks.
+Queue PID505489, runner PID516702, training PID516784.
+Observed fold0 epoch32/100; finite losses: box0.72099, cls0.5762, dfl1.02009.
+GPU0 memory snapshot4780MiB; only this project compute process observed.
+GPU1 never used by this task.
+Full batch: fresh 5fold YOLO training -> held-out video tracking/OCR/Qwen/CSV
+-> automatic geometric track association -> micro/macro OOF report.
+No final OOF report exists yet at this snapshot; manual identity review remains false.
+The batch continues without this chat. Status: artifacts/oof_launch_status.json on server.
+Local evidence: ../server_results/oof_server_20261104/runtime_evidence/
