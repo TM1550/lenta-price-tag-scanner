@@ -90,6 +90,7 @@ gitpython = "^3.1.0"
 optional = true
 [tool.poetry.group.data.dependencies]
 dvc = "^3.49.0"
+dvc-s3 = "^3.3.0"
 gdown = ">=5,<6"
 
 [tool.poetry.group.export]

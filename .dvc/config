@@ -1,4 +1,7 @@
 [core]
-    remote = artifacts
+    remote = dagshub
 ['remote "artifacts"']
     url = ../lenta-artifact-store
+['remote "dagshub"']
+    url = s3://dvc
+    endpointurl = https://dagshub.com/brizolkagame/ml-dvc.s3
