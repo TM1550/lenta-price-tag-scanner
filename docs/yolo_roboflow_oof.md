@@ -49,12 +49,12 @@ $py = '../.venv-pseudolabel/Scripts/python.exe'
 $env:DVC_NO_ANALYTICS = '1'
 $env:DVC_SITE_CACHE_DIR = "$PWD/../server_results/dvc-site-cache"
 $env:YOLO_CONFIG_DIR = "$PWD/data/laptop_runtime/ultralytics"
-& $py -m dvc pull -r minio data/yolo_roboflow_5fold_v1.dvc
+& $py -m dvc pull -r release data/yolo_roboflow_5fold_v1.dvc
 & $py -m lenta_price_tag_scanner.commands train-yolo --show-config
 ```
 
 Согласованный DVC-снимок содержит 809 файлов и доступен в MinIO.
-Перед загрузкой задайте S3-ключи и проверьте HTTPS-доступ по
+Перед загрузкой проверьте HTTPS-доступ по
 [инструкции DVC](dvc_handoff.md). GitHub содержит указатель, сами данные передаются через DVC.
 
 Сборка заново из очищенного набора, с новым выходным каталогом:

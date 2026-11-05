@@ -36,8 +36,8 @@ NMS и обратное преобразование координат выпо
 ## MLflow Serving YOLO
 
 Готовые проверенные ONNX/MLflow-пакеты доступны через
-`dvc pull -r minio data/yolo_deployment_v1.dvc` после
-[настройки S3-ключей и HTTPS-доступа](dvc_handoff.md).
+`dvc pull -r release data/yolo_deployment_v1.dvc` после
+[проверки HTTPS-доступа](dvc_handoff.md).
 ONNX: 8 совпавших детекций, максимальная абсолютная разница 0.00024414.
 MLflow HTTP: статус 200, результат совпадает с локальной загрузкой PyFunc.
 

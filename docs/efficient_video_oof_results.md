@@ -53,7 +53,7 @@ EfficientNet реально оценил **9561 кроп**.
 пять EfficientNet-checkpoints и их OOF-метаданные. Старый набор не изменяется.
 
 ```bash
-dvc pull -r minio data/video_oof_efficient_rank_20261105.dvc
+dvc pull -r release data/video_oof_efficient_rank_20261105.dvc
 ```
 
 `VERIFICATION.json` содержит независимую проверку счётчиков;

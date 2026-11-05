@@ -45,8 +45,7 @@ Qwen4B CPU использует float32 и не подходит для дост
 - `data/video_oof_20261104.dvc`: пять обученных YOLO-folds и результаты полной OOF-оценки.
 - `data/yolo_deployment_v1.dvc`: артефакты экспорта YOLO.
 
-Основной DVC remote — `minio`. Для первичной загрузки нужны HTTPS-доступ к MinIO и
-S3-ключи; [настройка подключения](dvc_handoff.md). После получения артефактов
+Основной DVC remote — `release`. Загрузка выполняется анонимно по HTTPS; [настройка подключения](dvc_handoff.md). После получения артефактов
 CPU-инференс выполняется локально. `laptop-temp` сохранён как резервное хранилище автора.
 
 ## Команды PowerShell
@@ -60,7 +59,7 @@ $env:DVC_SITE_CACHE_DIR = "$PWD/../server_results/dvc-site-cache"
 $env:YOLO_CONFIG_DIR = "$PWD/data/laptop_runtime/ultralytics"
 $env:PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK = 'True'
 
-& $python -m dvc pull -r minio data/inference_assets.dvc data/runtime_assets.dvc data/video_oof_20261104.dvc
+& $python -m dvc pull -r release data/inference_assets.dvc data/runtime_assets.dvc data/video_oof_20261104.dvc
 & $python -m lenta_price_tag_scanner.commands infer-cpu output=data/my_laptop_run
 & $python -m scripts.review_video_csv data/my_laptop_run
 ```

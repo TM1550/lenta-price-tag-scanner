@@ -1,5 +1,5 @@
 [core]
-    remote = minio
+    remote = release
 ['remote "artifacts"']
     url = ../lenta-artifact-store
 ['remote "minio"']
@@ -8,3 +8,10 @@
     region = us-east-1
     use_ssl = true
     ssl_verify = true
+['remote "release"']
+    url = s3://lenta-dvc-release
+    endpointurl = https://31.31.207.108
+    region = us-east-1
+    use_ssl = true
+    ssl_verify = true
+    allow_anonymous_login = true
