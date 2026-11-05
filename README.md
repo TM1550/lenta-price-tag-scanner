@@ -56,8 +56,7 @@
 выбора лучшего checkpoint.
 
 Основной YOLO-датасет содержит 391 кадр и 2593 bbox. Все пять моделей обучены
-по 100 эпох. Исходный YOLO-набор с четырьмя группами видео доступен как отдельная
-версия данных. OCR-набор используется для сравнения вариантов распознавания;
+по 100 эпох. OCR-набор используется для сравнения вариантов распознавания;
 его результаты интерпретируются как оценка на development-выборке.
 
 Схема разбиения и команды обучения:
@@ -69,12 +68,10 @@
 | --------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
 | Видео и эталонная разметка        | 5 видео, CSV, OCR-данные и веса PaddleOCR                | `data/runtime_assets.dvc`                    |
 | YOLO SAM3/Roboflow                | 391 кадр, 2593 bbox, 5 folds                             | `data/yolo_roboflow_5fold_v1.dvc`            |
-| Исходный YOLO                     | 251 изображение, 2118 bbox, 4 folds                      | `data/yolo_original_4fold.dvc`               |
 | EfficientNet                      | 2008 изображений: 350 положительных и 1658 отрицательных | `data/efficient_user_20261102.dvc`           |
 | Итоговые YOLO-модели и OOF-отчёты | 5 checkpoint и результаты видеооценки                    | `data/video_oof_20261104.dvc`                |
 | EfficientNet и новый OOF          | 5 классификаторов, CSV и отчёты с режимом rank           | `data/video_oof_efficient_rank_20261105.dvc` |
 | Артефакты инференса               | YOLO, EfficientNet, каталог и короткое видео             | `data/inference_assets.dvc`                  |
-| Псевдоразметка                    | Детекции старой YOLO и метаданные отбора                 | `data/pseudo_teacher_v1.dvc`                 |
 | Экспорт YOLO                      | ONNX и MLflow-пакет с проверкой инференса                | `data/yolo_deployment_v1.dvc`                |
 
 OCR-набор содержит 294 изображения и 107 групп наблюдений ценников.
@@ -157,7 +154,7 @@ poetry run dvc remote modify --local minio access_key_id '<ACCESS_KEY>'
 poetry run dvc remote modify --local minio secret_access_key '<SECRET_KEY>'
 # Наборы, необходимые команде download:
 poetry run price-scanner download
-# Все девять версионируемых артефактов:
+# Все семь версионируемых артефактов:
 poetry run dvc pull -r minio
 ```
 
@@ -200,12 +197,6 @@ folds создаётся сводная запись. Если MLflow работ
 ```bash
 poetry run price-scanner train output=runs/efficient_oof
 poetry run price-scanner train-yolo output=runs/yolo_roboflow_5fold_full
-```
-
-Обучение на исходном YOLO-наборе:
-
-```bash
-poetry run price-scanner train oof=yolo dataset=data/yolo_original_4fold output=runs/yolo_oof
 ```
 
 Контрольные CPU-профили для проверки обучения и логирования:
@@ -303,7 +294,7 @@ poetry run python -m lenta_price_tag_scanner.field_extraction data/video_result/
 ### MLflow Serving
 
 HTTP-сервисы выполняют классификацию изображения ценника или детекцию YOLO.
-Полный видеопайплайн запускается отдельной batch-командой.
+Полный видеопайплайн доступен через команду infer и HTTP-сервис видео.
 
 Сервис EfficientNet:
 
@@ -331,6 +322,33 @@ curl -H "Content-Type: application/json" --data-binary @artifacts/yolo_mlflow/re
 с колонкой `image_base64`. EfficientNet возвращает вероятность читаемости
 `probability`, YOLO — `detections_json` с координатами и confidence и число
 детекций `num_detections`. Готовые JSON-примеры создаются при упаковке моделей.
+
+### HTTP-инференс полного видео через MLflow Serving
+
+Из корня репозитория с установленными группами `data,ocr,paddle,serve` выполните:
+
+```bash
+poetry run python -m lenta_price_tag_scanner.serving_video --output artifacts/video_mlflow
+poetry run mlflow models serve -m artifacts/video_mlflow --env-manager local --host 127.0.0.1 --port 18083 --timeout 600
+```
+
+При упаковке DVC восстанавливает модели и каталог. Запускайте сервис из того же checkout с доступными DVC-файлами. По умолчанию применяется CPU-профиль с PaddleOCR. Для режима с Qwen установите также группу `vlm` и передайте параметры GPU-профиля при упаковке.
+
+Следующий пример отправляет MP4 на сервер и сохраняет результат детекции, трекинга, ранжирования кропов и распознавания полей в CSV. Поле `filename` используется для выбора модели по видео. HTTP-запрос завершается после обработки видео.
+
+```python
+import base64
+import json
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+video = Path("data/inference_assets/videos/example.mp4")
+payload = {"dataframe_records": [{"filename": video.name, "video_base64": base64.b64encode(video.read_bytes()).decode()}]}
+request = Request("http://127.0.0.1:18083/invocations", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+with urlopen(request) as response:
+    csv_text = json.load(response)["predictions"][0]["csv"]
+Path("submission.csv").write_bytes(csv_text.encode("utf-8-sig"))
+```
 
 ## Проверки и документация
 

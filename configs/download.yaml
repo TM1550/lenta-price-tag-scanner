@@ -1,7 +1,6 @@
 source: dvc
 targets:
   - data/efficient_user_20261102.dvc
-  - data/yolo_original_4fold.dvc
   - data/inference_assets.dvc
   - data/runtime_assets.dvc
   - data/yolo_roboflow_5fold_v1.dvc

@@ -8,7 +8,7 @@ seed: 42
 mlflow_uri: http://127.0.0.1:8080
 experiment: lenta_video_oof
 pull_dvc: true
-dvc_targets: [data/efficient_user_20261102.dvc, data/yolo_original_4fold.dvc]
+dvc_targets: [data/efficient_user_20261102.dvc]
 smoke: false
 smoke_samples: 8
 smoke_epochs: 2
