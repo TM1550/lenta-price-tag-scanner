@@ -32,14 +32,17 @@
 по видео, временным отметкам и координатам ценников. Пропущенные соответствия
 учитываются в знаменателе.
 
-| Компонент            | Выборка                      | Результат                                         |
-| -------------------- | ---------------------------- | ------------------------------------------------- |
-| Полный пайплайн, OOF | 5 видео, 3701 эталонное поле | Micro: **154/3701 = 4.1610%**, macro: **4.3896%** |
-| EfficientNet, OOF    | 2008 изображений             | Precision: 0.8645, recall: 0.5286, F1: 0.6560     |
-| Qwen3-VL-4B, OCR     | 294 транскрипции             | CER: 0.5869                                       |
+| Компонент                                | Выборка            | Результат                                         |
+| ---------------------------------------- | ------------------ | ------------------------------------------------- |
+| Полный пайплайн + EfficientNet rank, OOF | 5 видео, 3701 поле | Micro: **152/3701 = 4.1070%**, macro: **4.3018%** |
+| Пайплайн без EfficientNet, OOF           | 5 видео, 3701 поле | Micro: **154/3701 = 4.1610%**, macro: **4.3896%** |
+| EfficientNet, OOF                        | 2008 изображений   | Precision: 0.8645, recall: 0.5286, F1: 0.6560     |
+| Qwen3-VL-4B, OCR                         | 294 транскрипции   | CER: 0.5869                                       |
 
-Результат полного пайплайна получен для конфигурации PaddleOCR + Qwen3-VL
-с отключённым EfficientNet. Метрика правильности полей отличается от
+Новый результат полного пайплайна получен с PaddleOCR + Qwen3-VL и EfficientNet
+в режиме ранжирования. Сохранённая оценка без классификатора приведена отдельно.
+[Результаты по видео и протокол](docs/efficient_video_oof_results.md).
+Метрика правильности полей отличается от
 заполненности CSV и официальной метрики хакатона.
 Подробные результаты по видео приведены в [OOF-отчёте](docs/video_oof_results.md).
 Графики и журналы экспериментов находятся в [plots](plots).
@@ -62,16 +65,17 @@
 
 ## Данные
 
-| Набор                             | Состав                                                   | DVC-указатель                      |
-| --------------------------------- | -------------------------------------------------------- | ---------------------------------- |
-| Видео и эталонная разметка        | 5 видео, CSV, OCR-данные и веса PaddleOCR                | `data/runtime_assets.dvc`          |
-| YOLO SAM3/Roboflow                | 391 кадр, 2593 bbox, 5 folds                             | `data/yolo_roboflow_5fold_v1.dvc`  |
-| Исходный YOLO                     | 251 изображение, 2118 bbox, 4 folds                      | `data/yolo_original_4fold.dvc`     |
-| EfficientNet                      | 2008 изображений: 350 положительных и 1658 отрицательных | `data/efficient_user_20261102.dvc` |
-| Итоговые YOLO-модели и OOF-отчёты | 5 checkpoint и результаты видеооценки                    | `data/video_oof_20261104.dvc`      |
-| Артефакты инференса               | YOLO, EfficientNet, каталог и короткое видео             | `data/inference_assets.dvc`        |
-| Псевдоразметка                    | Детекции старой YOLO и метаданные отбора                 | `data/pseudo_teacher_v1.dvc`       |
-| Экспорт YOLO                      | ONNX и MLflow-пакет с проверкой инференса                | `data/yolo_deployment_v1.dvc`      |
+| Набор                             | Состав                                                   | DVC-указатель                                |
+| --------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
+| Видео и эталонная разметка        | 5 видео, CSV, OCR-данные и веса PaddleOCR                | `data/runtime_assets.dvc`                    |
+| YOLO SAM3/Roboflow                | 391 кадр, 2593 bbox, 5 folds                             | `data/yolo_roboflow_5fold_v1.dvc`            |
+| Исходный YOLO                     | 251 изображение, 2118 bbox, 4 folds                      | `data/yolo_original_4fold.dvc`               |
+| EfficientNet                      | 2008 изображений: 350 положительных и 1658 отрицательных | `data/efficient_user_20261102.dvc`           |
+| Итоговые YOLO-модели и OOF-отчёты | 5 checkpoint и результаты видеооценки                    | `data/video_oof_20261104.dvc`                |
+| EfficientNet и новый OOF          | 5 классификаторов, CSV и отчёты с режимом rank           | `data/video_oof_efficient_rank_20261105.dvc` |
+| Артефакты инференса               | YOLO, EfficientNet, каталог и короткое видео             | `data/inference_assets.dvc`                  |
+| Псевдоразметка                    | Детекции старой YOLO и метаданные отбора                 | `data/pseudo_teacher_v1.dvc`                 |
+| Экспорт YOLO                      | ONNX и MLflow-пакет с проверкой инференса                | `data/yolo_deployment_v1.dvc`                |
 
 OCR-набор содержит 294 изображения и 107 групп наблюдений ценников.
 Источник исходных материалов — [набор организаторов](https://drive.google.com/drive/folders/1_UbQ7x4MK9fZjA-9DqJY_A8nedsg9KMy).
@@ -104,8 +108,9 @@ Qwen3-VL используется как vision-language model для допол
 
 CPU-профиль использует PaddleOCR и EfficientNet в режиме `efficient_mode=rank`.
 Классификатор участвует в ранжировании кропов без порогового отбрасывания.
-VLM включается отдельным параметром. Значение 4.1610% относится к описанной
-выше OOF-конфигурации; отдельная оценка качества режима `rank` не проводилась.
+VLM включается отдельным параметром. Для режима `rank` выполнен полный OOF-прогон
+с весами обоих компонентов, соответствующими отложенному видео: 4.1070%
+правильных полей. Улучшения относительно сохранённого запуска без классификатора нет.
 
 Для известных видео YOLO-checkpoint выбирается по `model_by_video.json`.
 Проверяются SHA256 весов и отсутствие отложенного видео в обучающей группе.
@@ -157,7 +162,7 @@ poetry run dvc remote modify --local minio access_key_id '<ACCESS_KEY>'
 poetry run dvc remote modify --local minio secret_access_key '<SECRET_KEY>'
 # Только наборы для текущей команды download:
 poetry run price-scanner download
-# Все восемь версионируемых артефактов:
+# Все девять версионируемых артефактов:
 poetry run dvc pull -r minio
 ```
 
@@ -280,7 +285,7 @@ poetry run price-scanner infer-cpu output=data/cpu_video_result
 Режим с Qwen3-VL на GPU:
 
 ```bash
-poetry run price-scanner infer videos=/absolute/path/to/videos detector_device=cuda top_k=2 efficient_mode=off vlm_fallback=true vlm_limit=1000 vlm_name_override=true output=data/video_result
+poetry run price-scanner infer videos=/absolute/path/to/videos detector_device=cuda top_k=2 efficient_mode=rank vlm_fallback=true vlm_limit=1000 vlm_name_override=true output=data/video_result
 ```
 
 Первоначальная загрузка OCR/VLM-весов требует доступа к источнику моделей.
