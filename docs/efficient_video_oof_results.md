@@ -61,7 +61,11 @@ dvc pull -r minio data/video_oof_efficient_rank_20261105.dvc
 переноса на ноутбук. Данные и модели передаются через MinIO, в Git публикуется
 только DVC-указатель. Полные веса Qwen хранятся отдельно от этого набора.
 
-## Повторный запуск на подготовленном сервере
+## Историческая команда запуска
+
+Следующая команда относится к сохранённому запуску `f292edf`. Путь рабочей
+папки является частью его протокола; для нового окружения используются
+актуальные пути и интерфейс, описанный ниже.
 
 ```bash
 source /home/ozon_hack/lenta-oof-20261104/environment.sh
@@ -80,3 +84,36 @@ cd "$run/project"
 Требуются прежний baseline с train-списками YOLO, исходные видео, локальные
 PaddleOCR-веса, Qwen и пять EfficientNet-checkpoints. Для нового прогона
 задаётся отдельная выходная папка.
+
+## Текущий CLI и конфигурация runner
+
+Runner использует Click и иерархический Hydra-конфиг
+`configs/evaluate_efficient_oof.yaml`, наследующий настройки видеопайплайна.
+В конфиг вынесены число folds, свободная память GPU в MiB, свободное место
+на диске в GiB, длительность простоя и интервал опроса. Вес EfficientNet
+берётся из `pipeline.efficient_rank_weight`. Значения по умолчанию сохраняют
+параметры измеренного запуска: пять folds, 16000 MiB, 12 GiB, 120 с и weight=0.5.
+
+Подготовка на новом сервере с заданным `LENTA_WORKSPACE`:
+
+```bash
+poetry run python scripts/server/evaluate_efficient_oof.py \
+  --baseline "$LENTA_WORKSPACE/results/baseline" \
+  --efficient-assets "$LENTA_WORKSPACE/evaluations/current/efficient" \
+  --output "$LENTA_WORKSPACE/evaluations/current/prepared" \
+  --source-commit "$(git rev-parse HEAD)" \
+  --prepare-only \
+  resources.idle_seconds=120 pipeline.efficient_rank_weight=0.5
+```
+
+Все входные и выходные пути должны находиться внутри `LENTA_WORKSPACE`.
+Baseline должен содержать актуальные абсолютные пути к checkpoint,
+согласованные train-списки и их контрольные суммы; EfficientNet-артефакты -
+`models.json` и опись исходников `SOURCE_MANIFEST.json` в родительском каталоге.
+Старые абсолютные пути требуют адаптации при переносе baseline в новое окружение.
+Runner сохраняет `runner_config.yaml` и пять конфигураций пайплайна.
+
+`--prepare-only` не обращается к GPU. Для выполнения оценки этот флаг убирают
+и задают `CUDA_VISIBLE_DEVICES=0`: перед запуском и между folds проверяются
+только физическая GPU0 и отсутствие чужих процессов. Изменение версии runner
+не изменяет сохранённую метрику и не означает повторного GPU-прогона.

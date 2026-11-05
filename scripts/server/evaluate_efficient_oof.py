@@ -1,6 +1,5 @@
 """Re-evaluate existing held-out YOLO folds with video-matched EfficientNet weights."""
 
-import argparse
 import json
 import os
 import shutil
@@ -11,12 +10,33 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+import click
 from hydra import compose, initialize_config_module
 from omegaconf import OmegaConf
 
 from lenta_price_tag_scanner.build_datasets import checksum, write_json
 from lenta_price_tag_scanner.evaluate_fields import read_rows
 from lenta_price_tag_scanner.evaluate_tracks import write_csv
+
+GPU_INDEX = "0"
+BYTES_PER_GIB = 1024**3
+
+
+def runner_config(overrides=(), idle_seconds=None):
+    with initialize_config_module(config_module="configs", version_base=None):
+        config = compose(config_name="evaluate_efficient_oof", overrides=list(overrides))
+    if idle_seconds is not None:
+        config.resources.idle_seconds = idle_seconds
+    resources = config.resources
+    if resources.idle_seconds < 0 or resources.poll_seconds <= 0:
+        raise click.BadParameter("Idle seconds must be nonnegative; poll seconds must be positive")
+    if resources.min_gpu_free_mib <= 0 or resources.min_disk_free_gib <= 0:
+        raise click.BadParameter("Free GPU memory and disk requirements must be positive")
+    if config.expected_folds < 2:
+        raise click.BadParameter("At least two held-out folds are required")
+    if not 0 <= config.pipeline.efficient_rank_weight <= 1:
+        raise click.BadParameter("EfficientNet rank weight must be between zero and one")
+    return config
 
 
 def confined(path):
@@ -28,61 +48,72 @@ def confined(path):
 
 
 def gpu_sample():
-    if os.environ.get("CUDA_VISIBLE_DEVICES") != "0":
+    if os.environ.get("CUDA_VISIBLE_DEVICES") != GPU_INDEX:
         raise RuntimeError("Only physical GPU0 may be visible")
-    command = ["nvidia-smi", "-i", "0", "--format=csv,noheader,nounits"]
+    command = ["nvidia-smi", "-i", GPU_INDEX, "--format=csv,noheader,nounits"]
     values = (
         subprocess.check_output(command + ["--query-gpu=utilization.gpu,memory.free"], text=True)
         .strip()
         .split(",")
     )
     processes = subprocess.check_output(
-        ["nvidia-smi", "-i", "0", "--query-compute-apps=pid", "--format=csv,noheader"],
+        ["nvidia-smi", "-i", GPU_INDEX, "--query-compute-apps=pid", "--format=csv,noheader"],
         text=True,
     ).strip()
     return dict(utilization=int(values[0]), free_mib=int(values[1]), processes=processes)
 
 
-def admit_gpu(output, seconds):
+def gpu_occupied(sample, resources):
+    return bool(
+        sample["utilization"]
+        or sample["free_mib"] < resources.min_gpu_free_mib
+        or sample["processes"]
+    )
+
+
+def admit_gpu(output, resources):
     started = time.monotonic()
     samples = []
     while True:
         sample = gpu_sample()
         samples.append(dict(utc=datetime.now(timezone.utc).isoformat(), **sample))
         write_json(output / "gpu_admission.json", samples)
-        if sample["utilization"] or sample["free_mib"] < 16000 or sample["processes"]:
+        if gpu_occupied(sample, resources):
             raise RuntimeError("GPU0 occupied; no launch and no competition processes modified")
-        if time.monotonic() - started >= seconds:
+        elapsed = time.monotonic() - started
+        if elapsed >= resources.idle_seconds:
             return
-        time.sleep(min(5, seconds - (time.monotonic() - started)))
+        time.sleep(min(resources.poll_seconds, resources.idle_seconds - elapsed))
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--baseline", required=True)
-    parser.add_argument("--efficient-assets", required=True)
-    parser.add_argument("--output", required=True)
-    parser.add_argument("--source-commit", required=True)
-    parser.add_argument("--prepare-only", action="store_true")
-    parser.add_argument("--idle-seconds", type=int, default=120)
-    args = parser.parse_args()
-    if args.idle_seconds < 0:
-        parser.error("idle-seconds must be nonnegative")
-    baseline = confined(args.baseline)
-    assets = confined(args.efficient_assets)
-    output = confined(args.output)
+@click.command()
+@click.option("--baseline", required=True, type=click.Path(path_type=Path))
+@click.option("--efficient-assets", required=True, type=click.Path(path_type=Path))
+@click.option("--output", required=True, type=click.Path(path_type=Path))
+@click.option("--source-commit", required=True)
+@click.option("--prepare-only", is_flag=True, help="Prepare fold configs without querying the GPU.")
+@click.option("--idle-seconds", type=click.IntRange(min=0), default=None)
+@click.argument("overrides", nargs=-1)
+def main(baseline, efficient_assets, output, source_commit, prepare_only, idle_seconds, overrides):
+    """Evaluate held-out folds; trailing KEY=VALUE arguments override Hydra settings."""
+    settings = runner_config(overrides, idle_seconds)
+    baseline = confined(baseline)
+    assets = confined(efficient_assets)
+    output = confined(output)
     output.mkdir(parents=True, exist_ok=True)
-    if shutil.disk_usage(output).free < 12 * 1024**3:
-        raise RuntimeError("At least 12 GiB free disk required")
+    if shutil.disk_usage(output).free < settings.resources.min_disk_free_gib * BYTES_PER_GIB:
+        raise RuntimeError(
+            f"At least {settings.resources.min_disk_free_gib} GiB free disk required"
+        )
+    OmegaConf.save(settings, output / "runner_config.yaml")
     manifest = json.loads((assets / "models.json").read_text())
     previous = json.loads((baseline / "oof_provenance.json").read_text())
-    if {item["fold"] for item in previous} != set(range(5)) or set(manifest["models"]) != {
-        str(fold) for fold in range(5)
-    }:
-        raise ValueError("Five verified folds are required")
+    if {item["fold"] for item in previous} != set(range(settings.expected_folds)) or set(
+        manifest["models"]
+    ) != {str(fold) for fold in range(settings.expected_folds)}:
+        raise ValueError(f"{settings.expected_folds} verified folds are required")
     previous.sort(key=lambda item: item["fold"])
-    with initialize_config_module(config_module="configs", version_base=None):
-        defaults = compose(config_name="video_to_csv")
+    defaults = settings.pipeline
     defaults = OmegaConf.create(OmegaConf.to_container(defaults, resolve=True))
     jobs = []
     for old in previous:
@@ -104,7 +135,7 @@ def main():
         config.pull_dvc = False
         config.efficient_weights = str(efficient)
         config.efficient_mode = "rank"
-        config.efficient_rank_weight = 0.5
+        config.efficient_rank_weight = settings.pipeline.efficient_rank_weight
         config.yolo_weights = str(detector)
         config.resume_tracks = None
         config.output = str(output / f"fold_{fold}/pipeline")
@@ -128,22 +159,22 @@ def main():
             )
         )
     provenance = dict(
-        source_commit=args.source_commit,
+        source_commit=source_commit,
         efficient_mode="rank",
-        rank_weight=0.5,
+        rank_weight=settings.pipeline.efficient_rank_weight,
         source_inventory_sha256=checksum(assets.parent / "SOURCE_MANIFEST.json"),
         efficient_manifest=manifest,
         baseline_report_sha256=checksum(baseline / "report.json"),
-        gpu=0,
+        gpu=int(GPU_INDEX),
         manual_identity_review_completed=False,
         jobs=jobs,
     )
     write_json(output / "experiment.json", provenance)
-    if args.prepare_only:
+    if prepare_only:
         print(json.dumps(dict(prepared_folds=len(jobs), executed=False)))
         return
     write_json(output / "status.json", dict(state="gpu_admission", completed_folds=[]))
-    admit_gpu(output, args.idle_seconds)
+    admit_gpu(output, settings.resources)
     reports = []
     predictions = []
     for job in jobs:
@@ -153,7 +184,7 @@ def main():
         report_path = destination / "evaluation/report.json"
         if not report_path.is_file():
             sample = gpu_sample()
-            if sample["utilization"] or sample["free_mib"] < 16000 or sample["processes"]:
+            if gpu_occupied(sample, settings.resources):
                 raise RuntimeError("GPU0 no longer free between folds; existing results preserved")
             pipeline = destination / "pipeline"
             if not (pipeline / "metrics.json").is_file():
@@ -236,7 +267,7 @@ def main():
             per_video={jobs[item["fold"]]["video"]: item for item in reports},
             oof=True,
             efficient_mode="rank",
-            source_commit=args.source_commit,
+            source_commit=source_commit,
             automatic_associations=True,
             manual_identity_review_completed=False,
         )
@@ -256,7 +287,10 @@ def main():
     )
     write_json(output / "report.json", summary)
     write_csv(output / "submission_oof.csv", predictions)
-    write_json(output / "status.json", dict(state="complete", completed_folds=list(range(5))))
+    write_json(
+        output / "status.json",
+        dict(state="complete", completed_folds=list(range(settings.expected_folds))),
+    )
     print(
         json.dumps({key: value for key, value in summary.items() if key != "per_video"}, indent=2)
     )

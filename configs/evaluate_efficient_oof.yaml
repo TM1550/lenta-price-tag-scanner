@@ -1,0 +1,12 @@
+defaults:
+  - video_to_csv@pipeline
+  - _self_
+expected_folds: 5
+resources:
+  min_gpu_free_mib: 16000
+  min_disk_free_gib: 12
+  idle_seconds: 120
+  poll_seconds: 5
+hydra:
+  job:
+    chdir: false

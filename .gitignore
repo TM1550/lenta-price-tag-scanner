@@ -1,4 +1,5 @@
-/data/*
+# Require a child name so DVC can traverse data/ when using Dulwich.
+/data/?*
 !/data/*.dvc
 
 # Dependencies
