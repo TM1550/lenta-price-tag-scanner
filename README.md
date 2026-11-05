@@ -69,6 +69,9 @@
 | Исходный YOLO                     | 251 изображение, 2118 bbox, 4 folds                      | `data/yolo_original_4fold.dvc`     |
 | EfficientNet                      | 2008 изображений: 350 положительных и 1658 отрицательных | `data/efficient_user_20261102.dvc` |
 | Итоговые YOLO-модели и OOF-отчёты | 5 checkpoint и результаты видеооценки                    | `data/video_oof_20261104.dvc`      |
+| Артефакты инференса               | YOLO, EfficientNet, каталог и короткое видео             | `data/inference_assets.dvc`        |
+| Псевдоразметка                    | Детекции старой YOLO и метаданные отбора                 | `data/pseudo_teacher_v1.dvc`       |
+| Экспорт YOLO                      | ONNX и MLflow-пакет с проверкой инференса                | `data/yolo_deployment_v1.dvc`      |
 
 OCR-набор содержит 294 изображения и 107 групп наблюдений ценников.
 Источник исходных материалов — [набор организаторов](https://drive.google.com/drive/folders/1_UbQ7x4MK9fZjA-9DqJY_A8nedsg9KMy).
@@ -77,6 +80,7 @@ OCR-набор содержит 294 изображения и 107 групп н�
 
 Датасеты, веса и результаты предсказаний версионируются через DVC. В Git
 хранятся код, конфигурации, документация, графики и DVC-указатели.
+Основное хранилище данных — MinIO; [состав артефактов и настройка доступа](docs/dvc_handoff.md).
 
 ## Моделирование
 
@@ -136,28 +140,42 @@ YAML-конфигурации включены в состав Python-пакет
 
 ### Доступ к DVC
 
-Для получения датасетов и весов необходимо подключить DVC-хранилище проекта.
-Подключение локального object store:
+Основной remote `minio` хранит датасеты, исходные видео, веса моделей и результаты OOF. Git содержит DVC-указатели; сами артефакты передаются через S3 API.
+Доступ предоставляется отдельной учётной записью и SSH-туннелем к VPS.
+Подключение, настройка ключей и полный перечень: [DVC и MinIO](docs/dvc_handoff.md).
+
+После настройки SSH-доступа откройте туннель в отдельном терминале:
 
 ```bash
-poetry run dvc remote modify --local artifacts url /absolute/path/to/dvc-store
-poetry run dvc config --local core.remote artifacts
-poetry run price-scanner download
+ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L 127.0.0.1:19000:127.0.0.1:9000 regru-vps
 ```
 
-Параметры авторизации и локальные пути сохраняются в `.dvc/config.local`,
-исключённом из Git. Команды обучения, инференса, экспорта и упаковки моделей
-вызывают DVC pull. При использовании предварительно подготовленных локальных
-артефактов загрузка отключается параметром `pull_dvc=false`.
+В другом терминале укажите S3-ключи только в локальном конфиге:
 
-Загрузка исходных материалов из публичного источника:
+```bash
+poetry run dvc remote modify --local minio access_key_id '<ACCESS_KEY>'
+poetry run dvc remote modify --local minio secret_access_key '<SECRET_KEY>'
+# Только наборы для текущей команды download:
+poetry run price-scanner download
+# Все восемь версионируемых артефактов:
+poetry run dvc pull -r minio
+```
+
+`poetry install --with data` устанавливает зависимости; загрузка артефактов запускается
+отдельно. Для передачи данных без ML-зависимостей достаточно отдельного окружения с
+`python -m pip install "dvc[s3]==3.67.1"`.
+
+Учётные данные и локальные пути сохраняются в `.dvc/config.local`, который игнорируется Git.
+`train`, `infer`, `export` и `serve-package` по умолчанию вызывают DVC pull.
+Для уже подготовленных внешних файлов можно явно указать `pull_dvc=false`.
+
+Функция `download_data()` и CLI для публичных исходников:
 
 ```bash
 poetry run price-scanner download source=public output=data/raw_public
 ```
 
-Подготовленные версии обучающих наборов и веса загружаются отдельно через DVC.
-Описание структуры хранилища: [управление артефактами](docs/dvc_handoff.md).
+Она не подменяет ручную разметку или обученные веса скачанными оригиналами.
 
 ## Train
 

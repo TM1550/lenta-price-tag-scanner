@@ -49,14 +49,13 @@ $py = '../.venv-pseudolabel/Scripts/python.exe'
 $env:DVC_NO_ANALYTICS = '1'
 $env:DVC_SITE_CACHE_DIR = "$PWD/../server_results/dvc-site-cache"
 $env:YOLO_CONFIG_DIR = "$PWD/data/laptop_runtime/ultralytics"
-& $py -m dvc pull -r laptop-temp data/yolo_roboflow_5fold_v1.dvc
+& $py -m dvc pull -r minio data/yolo_roboflow_5fold_v1.dvc
 & $py -m lenta_price_tag_scanner.commands train-yolo --show-config
 ```
 
-Новый `.dvc`-указатель создан, 806 файлов сохранены в локальный `laptop-temp`.
-Этот remote находится на том же ноутбуке. Для другого компьютера нужен перенос
-remote или публикация DVC-снимка в командное хранилище; GitHub содержит только
-указатель. Перед запуском на другом устройстве настройте его DVC remote.
+Согласованный DVC-снимок содержит 809 файлов и доступен в MinIO.
+Перед загрузкой откройте SSH-туннель и задайте S3-ключи по
+[инструкции DVC](dvc_handoff.md). GitHub содержит указатель, сами данные передаются через DVC.
 
 Сборка заново из очищенного набора, с новым выходным каталогом:
 

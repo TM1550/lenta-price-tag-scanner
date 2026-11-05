@@ -18,7 +18,7 @@ checkpoint не следует использовать для такой оце
 ## Подготовка к production
 
 ```bash
-poetry install --with train,export,serve
+poetry install --with data,train,export,serve
 poetry run price-scanner export-yolo
 poetry run price-scanner serve-yolo-package
 ```
@@ -35,7 +35,8 @@ NMS и обратное преобразование координат выпо
 ## MLflow Serving YOLO
 
 Готовые проверенные ONNX/MLflow-пакеты доступны через
-`dvc pull data/yolo_deployment_v1.dvc` (на ноутбуке remote `laptop-temp`).
+`dvc pull -r minio data/yolo_deployment_v1.dvc` после
+[настройки SSH-туннеля и S3-ключей](dvc_handoff.md).
 ONNX: 8 совпавших детекций, максимальная абсолютная разница 0.00024414.
 MLflow HTTP: статус 200, результат совпадает с локальной загрузкой PyFunc.
 
