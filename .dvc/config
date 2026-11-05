@@ -1,7 +1,9 @@
 [core]
-    remote = dagshub
+    remote = minio
 ['remote "artifacts"']
     url = ../lenta-artifact-store
-['remote "dagshub"']
-    url = s3://dvc
-    endpointurl = https://dagshub.com/brizolkagame/ml-dvc.s3
+['remote "minio"']
+    url = s3://lenta-dvc
+    endpointurl = http://127.0.0.1:19000
+    region = us-east-1
+    use_ssl = false

@@ -1,68 +1,142 @@
-# Временное DVC-хранилище и перенос с сервера
+# Хранение данных в DVC и MinIO
 
-03.11.2026 контрольное восстановление всех пяти указателей в новую no-SCM
-папку прошло: 2687 DVC-объектов получено, статус данных — up to date.
-Позднее добавлен и отдельно восстановлен `data/runtime_assets.dvc` для полного
-CPU-пайплайна: видео, CSV, OCR-разметка и локальные Paddle-веса. Итого шесть указателей.
+Основное хранилище проекта — закрытый MinIO на VPS `31.31.207.108`.
+В Git хранятся DVC-указатели и конфигурация remote; данные и веса передаются через S3 API.
+Remote `minio` выбран по умолчанию:
 
-04.11.2026 добавлен седьмой указатель `data/yolo_roboflow_5fold_v1.dvc`:
-новый очищенный YOLO-набор, 391 кадр / 2593 bbox, 5 folds по видео.
-Он сохранён в `laptop-temp`; [команды обучения](yolo_roboflow_oof.md).
-
-Восьмой указатель `data/video_oof_20261104.dvc` обновлён после завершения всех
-пяти видео: пять YOLO, общий CSV, пять оценок и галереи, метрики и provenance.
-Итог 154/3701 = 4,1610%; directory MD5 `9c6ef68da5d38e9f570b1aa8fe70f01a.dir`,
-1361 файл / 164809163 байта. Автоперенос, push в `laptop-temp` и проверка всех
-объектов завершены 04.11.2026 в 21:19 Asia/Novosibirsk.
-[Результаты и ограничения](video_oof_results.md).
-
-Локальный remote `laptop-temp`:
-`C:/Users/tsire/Downloads/MLOPS_codex/server_results/dvc-store`.
-Он выбран по умолчанию через `.dvc/config.local`, который не должен попадать
-в Git. Ранее существовавшие настройки сохранены; резервная копия приватного
-конфига находится в игнорируемом `.dvc/tmp/config.local.before_laptop_20261103`.
-Не публикуйте её: там могут быть старые учётные данные.
-
-Это временное хранилище на том же ноутбуке, а не облачная резервная копия.
-GitHub содержит только указатели `.dvc`; `git push` не отправляет сами данные.
-
-Из корня репозитория, PowerShell:
-
-```powershell
-$env:DVC_NO_ANALYTICS = '1'
-$env:DVC_SITE_CACHE_DIR = 'C:/Users/tsire/Downloads/MLOPS_codex/server_results/dvc-site-cache'
-$dvc = '../.venv-pseudolabel/Scripts/dvc.exe'
-& $dvc pull -r laptop-temp data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc data/runtime_assets.dvc data/yolo_roboflow_5fold_v1.dvc data/video_oof_20261104.dvc
+```ini
+['remote "minio"']
+    url = s3://lenta-dvc
+    endpointurl = http://127.0.0.1:19000
+    region = us-east-1
+    use_ssl = false
 ```
 
-При переходе на remote сокомандника не удаляйте локальное хранилище, пока
-не выполнены push и восстановление из новой чистой копии:
+HTTP используется только внутри SSH-туннеля. На VPS API и консоль привязаны к
+`127.0.0.1:9000` и `127.0.0.1:9001`; соединение между ноутбуком и VPS шифруется SSH.
 
-```powershell
-# Сначала настроить remote team с адресом сокомандника.
-& $dvc remote add team '<адрес хранилища>'
-# Пароли/токены задавать только локально, по инструкции для типа хранилища.
-& $dvc push -r team data/efficient_user_20261102.dvc data/yolo_original_4fold.dvc data/inference_assets.dvc data/pseudo_teacher_v1.dvc data/server_backup_20261103.tar.gz.dvc data/runtime_assets.dvc data/yolo_roboflow_5fold_v1.dvc data/video_oof_20261104.dvc
-& $dvc config --local core.remote team
+## Состав артефактов
+
+| DVC-указатель | Файлов | МиБ | Содержимое |
+| --- | ---: | ---: | --- |
+| `data/efficient_user_20261102.dvc` | 2011 | 38.8 | Кропы читаемости, метки и manifest для EfficientNet |
+| `data/inference_assets.dvc` | 6 | 88.7 | YOLO, EfficientNet, каталог и короткий пример видео |
+| `data/pseudo_teacher_v1.dvc` | 159 | 167.3 | Псевдоразметка старой YOLO и метаданные отбора |
+| `data/runtime_assets.dvc` | 636 | 496.8 | Полные видео, эталонные CSV, OCR-набор и локальные PaddleOCR-веса |
+| `data/video_oof_20261104.dvc` | 1361 | 157.2 | Пять YOLO-моделей, итоговые CSV, отчёты, галереи и provenance OOF |
+| `data/yolo_deployment_v1.dvc` | 51 | 28.8 | Артефакты экспорта YOLO для развёртывания |
+| `data/yolo_original_4fold.dvc` | 508 | 254.3 | Исходная разметка YOLO и 4 folds по видео |
+| `data/yolo_roboflow_5fold_v1.dvc` | 809 | 394.3 | Очищенный экспорт Roboflow/SAM3 и 5 folds по видео |
+
+Суммарный логический объём — 1 704 991 484 байта (около 1,70 ГБ).
+Общие объекты хранятся в DVC однократно. Полные веса Qwen в эти артефакты не входят;
+VLM загружается отдельно по зафиксированной в конфигурации ревизии.
+
+## Подключение
+
+Для DVC нужны два независимых доступа: SSH к VPS и S3-ключи MinIO.
+Администратор предоставляет SSH-пользователя и разрешает публичный ключ участника;
+каждый участник использует собственный приватный ключ. Запись в `~/.ssh/config`:
+
+```sshconfig
+Host regru-vps
+    HostName 31.31.207.108
+    User <SSH_USER>
+    Port 22
+    IdentityFile ~/.ssh/<PRIVATE_KEY_FILE>
+    IdentitiesOnly yes
 ```
 
-Для публичного default сначала установить `dvc config core.remote team`, затем
-убрать перекрытие `dvc config --local --unset core.remote`. Команда `push -r team`
-явно задаёт назначение независимо от текущего default.
+Откройте туннель в отдельном терминале Windows Git Bash, PowerShell или Linux/WSL:
 
-Финальный архив сервера хранится в `../server_results/server_project_final_20261103.tar.gz`.
-Внутри TRANSFER_INVENTORY.json: SHA256 и размер каждого включённого файла,
-исключённые каталоги и ссылки. Исключены основные окружения, скачиваемые кеши, временные
-файлы, дубли delivery, Git-история, приватные DVC-конфиги, `.env`, ключи и файлы
-учётных данных. Они не нужны для сохранения обученных весов и результатов.
-Обученные модели, исходники, данные, outputs, логи и MLflow-результаты включены.
-Архив не предназначен для публикации как общедоступный материал: права на
-распространение исходных видео/каталога остаются ответственностью владельца.
+```bash
+ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:19000:127.0.0.1:9000 -L 127.0.0.1:19001:127.0.0.1:9001 regru-vps
+```
 
-Подтверждение полного переноса: `../server_results/final_transfer_verification.json`.
-Подтверждение восстановления DVC: `../server_results/dvc_restore_verified.txt`.
-Пока оба файла не созданы успешными проверками, удалять серверную папку рано.
-Серверные данные в ходе настройки не удаляются.
+Терминал с туннелем должен оставаться открытым. Запускайте DVC в той же среде,
+где открыт туннель: например, обе команды в WSL или обе на Windows.
+API доступен по `http://127.0.0.1:19000`, консоль — по `http://127.0.0.1:19001`.
+Проверка API: `curl --fail http://127.0.0.1:19000/minio/health/live`.
 
-Локальная Git-история очищена; [протокол и порядок публикации](git_history_cleanup.md).
-Ранее раскрытый пароль всё ещё нужно заменить: переписывание истории не отзывает его.
+## Настройка DVC
+
+В проектном Poetry-окружении используется группа `data`:
+
+```bash
+poetry install --with data
+```
+
+Установка зависимостей не скачивает датасеты. Если нужны только передача и
+версионирование данных, используйте отдельное Python-окружение с DVC:
+
+```bash
+python -m pip install "dvc[s3]==3.67.1"
+```
+
+Это окружение не требует установки PyTorch/CUDA. Ниже команды приведены для
+самостоятельного `dvc`; в Poetry-окружении используйте `poetry run dvc`.
+
+Из корня репозитория задайте полученные S3-ключи:
+
+```bash
+dvc remote modify --local minio access_key_id '<ACCESS_KEY>'
+dvc remote modify --local minio secret_access_key '<SECRET_KEY>'
+dvc config --local core.remote minio
+```
+
+Параметры `--local` сохраняются в `.dvc/config.local`, который исключён из Git.
+На MinIO подготовлены отдельные аккаунты: два с правами чтения/записи и один
+только для чтения бакета `lenta-dvc`. Доступ читателя предназначен для проверки
+и скачивания артефактов. Администраторские ключи для работы DVC не требуются.
+
+## Загрузка и обновление данных
+
+Все восемь артефактов:
+
+```bash
+dvc pull -r minio
+```
+
+Только новый обучающий датасет YOLO и EfficientNet:
+
+```bash
+dvc pull -r minio data/yolo_roboflow_5fold_v1.dvc data/efficient_user_20261102.dvc
+```
+
+Минимальные артефакты текущего CPU-инференса:
+
+```bash
+dvc pull -r minio data/inference_assets.dvc data/runtime_assets.dvc data/video_oof_20261104.dvc
+```
+
+Обновление отдельного датасета выполняется владельцем доступа на запись:
+
+```bash
+dvc add data/yolo_roboflow_5fold_v1
+dvc push -r minio data/yolo_roboflow_5fold_v1.dvc
+git add data/yolo_roboflow_5fold_v1.dvc
+git commit -m "Update versioned YOLO dataset"
+git push
+```
+
+Сначала завершается передача объектов в MinIO, затем публикуется DVC-указатель в Git.
+`git push` сам по себе не передаёт файлы датасета. Рабочие папки ручной разметки
+используются как источник подготовки снимков; цели DVC перечислены в таблице выше.
+
+## Развёртывание и резервная копия
+
+MinIO размещён в `/opt/lenta-minio`, постоянные объекты — в подкаталоге `data`.
+Лицензия подключена к контейнеру только для чтения. Docker включён в автозапуск,
+контейнер использует `restart: unless-stopped`. Команды администратора VPS:
+
+```bash
+cd /opt/lenta-minio
+docker compose -f compose.yaml -f compose.licensed.yaml ps
+docker compose -f compose.yaml -f compose.licensed.yaml up -d
+```
+
+Лицензия, `.env`, закрытые ключи и конфиги MinIO остаются вне Git.
+Локальный object store автора `laptop-temp` сохранён как резервная копия;
+MinIO выбран основным remote. Удаление локальных данных не является частью миграции.
+Локальный резервный архив проекта сохранён на ноутбуке и исключён из целей DVC;
+для воспроизведения используются восемь артефактов из таблицы выше.

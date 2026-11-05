@@ -38,11 +38,12 @@ Qwen4B CPU использует float32 и не подходит для дост
   локальные веса PP-OCRv5 mobile detection и eslav recognition.
 - `data/efficient_user_20261102.dvc`, `data/yolo_original_4fold.dvc`,
   `data/pseudo_teacher_v1.dvc`: обучающие снимки.
-- `data/server_backup_20261103.tar.gz.dvc`: остальные обученные fold-checkpoint,
-  результаты экспериментов и серверные исходники в архиве.
+- `data/video_oof_20261104.dvc`: пять обученных YOLO-folds и результаты полной OOF-оценки.
+- `data/yolo_deployment_v1.dvc`: артефакты экспорта YOLO.
 
-Локальный DVC remote — `laptop-temp`. Общедоступным он не является.
-На этом ноутбуке доступ к удалённому серверу для pull не требуется.
+Основной DVC remote — `minio`. Для первичной загрузки нужен доступ к MinIO через
+SSH-туннель; [настройка подключения](dvc_handoff.md). После получения артефактов
+CPU-инференс выполняется локально. `laptop-temp` сохранён как резервное хранилище автора.
 
 ## Команды PowerShell
 
@@ -55,7 +56,7 @@ $env:DVC_SITE_CACHE_DIR = "$PWD/../server_results/dvc-site-cache"
 $env:YOLO_CONFIG_DIR = "$PWD/data/laptop_runtime/ultralytics"
 $env:PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK = 'True'
 
-& $python -m dvc pull -r laptop-temp data/inference_assets.dvc data/runtime_assets.dvc
+& $python -m dvc pull -r minio data/inference_assets.dvc data/runtime_assets.dvc data/video_oof_20261104.dvc
 & $python -m lenta_price_tag_scanner.commands infer-cpu output=data/my_laptop_run
 & $python -m scripts.review_video_csv data/my_laptop_run
 ```
