@@ -4,6 +4,7 @@
     url = ../lenta-artifact-store
 ['remote "minio"']
     url = s3://lenta-dvc
-    endpointurl = http://127.0.0.1:19000
+    endpointurl = https://31.31.207.108
     region = us-east-1
-    use_ssl = false
+    use_ssl = true
+    ssl_verify = true

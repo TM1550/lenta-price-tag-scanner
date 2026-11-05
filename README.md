@@ -145,22 +145,17 @@ YAML-конфигурации включены в состав Python-пакет
 
 ### Доступ к DVC
 
-Основной remote `minio` хранит датасеты, исходные видео, веса моделей и результаты OOF. Git содержит DVC-указатели; сами артефакты передаются через S3 API.
-Доступ предоставляется отдельной учётной записью и SSH-туннелем к VPS.
-Подключение, настройка ключей и полный перечень: [DVC и MinIO](docs/dvc_handoff.md).
+Основной remote `minio` — закрытый S3-бакет `lenta-dvc` с публичным HTTPS endpoint
+**`https://31.31.207.108`**. Для скачивания нужны S3-ключи MinIO с правом чтения;
+SSH-доступ и туннель не требуются. TLS-сертификат проверяется клиентом.
+[Состав артефактов и настройка доступа](docs/dvc_handoff.md).
 
-После настройки SSH-доступа откройте туннель в отдельном терминале:
-
-```bash
-ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L 127.0.0.1:19000:127.0.0.1:9000 regru-vps
-```
-
-В другом терминале укажите S3-ключи только в локальном конфиге:
+В корне репозитория укажите выданные S3-ключи только в локальном конфиге:
 
 ```bash
 poetry run dvc remote modify --local minio access_key_id '<ACCESS_KEY>'
 poetry run dvc remote modify --local minio secret_access_key '<SECRET_KEY>'
-# Только наборы для текущей команды download:
+# Наборы, необходимые команде download:
 poetry run price-scanner download
 # Все девять версионируемых артефактов:
 poetry run dvc pull -r minio
@@ -170,7 +165,7 @@ poetry run dvc pull -r minio
 отдельно. Для передачи данных без ML-зависимостей достаточно отдельного окружения с
 `python -m pip install "dvc[s3]==3.67.1"`.
 
-Учётные данные и локальные пути сохраняются в `.dvc/config.local`, который игнорируется Git.
+Учётные данные сохраняются в `.dvc/config.local`, который игнорируется Git.
 `train`, `infer`, `export` и `serve-package` по умолчанию вызывают DVC pull.
 Для уже подготовленных внешних файлов можно явно указать `pull_dvc=false`.
 

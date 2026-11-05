@@ -7,13 +7,16 @@ Remote `minio` выбран по умолчанию:
 ```ini
 ['remote "minio"']
     url = s3://lenta-dvc
-    endpointurl = http://127.0.0.1:19000
+    endpointurl = https://31.31.207.108
     region = us-east-1
-    use_ssl = false
+    use_ssl = true
+    ssl_verify = true
 ```
 
-HTTP используется только внутри SSH-туннеля. На VPS API и консоль привязаны к
-`127.0.0.1:9000` и `127.0.0.1:9001`; соединение между ноутбуком и VPS шифруется SSH.
+DVC соединяется с VPS напрямую через HTTPS. SSH-туннель не требуется.
+Nginx публикует API бакета `lenta-dvc` на порту 443; бакет остаётся закрытым.
+MinIO API `127.0.0.1:9000` и консоль `127.0.0.1:9001` доступны локально на VPS.
+Административные и внутренние маршруты MinIO не публикуются через HTTPS proxy.
 
 ## Состав артефактов
 
@@ -35,29 +38,17 @@ VLM загружается отдельно по зафиксированной 
 
 ## Подключение
 
-Для DVC нужны два независимых доступа: SSH к VPS и S3-ключи MinIO.
-Администратор предоставляет SSH-пользователя и разрешает публичный ключ участника;
-каждый участник использует собственный приватный ключ. Запись в `~/.ssh/config`:
-
-```sshconfig
-Host regru-vps
-    HostName 31.31.207.108
-    User <SSH_USER>
-    Port 22
-    IdentityFile ~/.ssh/<PRIVATE_KEY_FILE>
-    IdentitiesOnly yes
-```
-
-Откройте туннель в отдельном терминале Windows Git Bash, PowerShell или Linux/WSL:
+Пользователь получает `access_key_id` и `secret_access_key` MinIO.
+Для скачивания достаточно отдельного аккаунта только с правами чтения бакета.
+Приватный SSH-ключ VPS и пароль администратора MinIO пользователю не нужны.
 
 ```bash
-ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:19000:127.0.0.1:9000 -L 127.0.0.1:19001:127.0.0.1:9001 regru-vps
+curl --fail https://31.31.207.108/minio/health/live
 ```
 
-Терминал с туннелем должен оставаться открытым. Запускайте DVC в той же среде,
-где открыт туннель: например, обе команды в WSL или обе на Windows.
-API доступен по `http://127.0.0.1:19000`, консоль — по `http://127.0.0.1:19001`.
-Проверка API: `curl --fail http://127.0.0.1:19000/minio/health/live`.
+Ответ HTTP 200 означает, что сервис доступен. Доступ к объектам дополнительно
+проверяется S3-ключами. TLS использует доверенный сертификат Let’s Encrypt для IP;
+сертификат автоматически продлевается. Проверку TLS отключать не требуется.
 
 ## Настройка DVC
 
@@ -132,8 +123,8 @@ MinIO размещён в `/opt/lenta-minio`, постоянные объект�
 
 ```bash
 cd /opt/lenta-minio
-docker compose -f compose.yaml -f compose.licensed.yaml ps
-docker compose -f compose.yaml -f compose.licensed.yaml up -d
+docker compose --env-file .env --env-file https.env -f compose.yaml -f compose.licensed.yaml -f compose.https.yaml ps
+docker compose --env-file .env --env-file https.env -f compose.yaml -f compose.licensed.yaml -f compose.https.yaml up -d
 ```
 
 Лицензия, `.env`, закрытые ключи и конфиги MinIO остаются вне Git.
@@ -141,3 +132,43 @@ docker compose -f compose.yaml -f compose.licensed.yaml up -d
 MinIO выбран основным remote. Удаление локальных данных не является частью миграции.
 Локальный резервный архив проекта сохранён на ноутбуке и исключён из целей DVC;
 для воспроизведения используются девять артефактов из таблицы выше.
+
+## HTTPS и обслуживание сертификата
+
+Конфигурация Nginx находится в `/opt/lenta-minio/https/nginx/default.conf`,
+сертификат и ключ — в закрытом каталоге `/opt/lenta-minio/tls/letsencrypt`.
+Веб-консоль не публикуется; SSH используется только администратором VPS.
+Для доступа к консоли администратор может открыть локальный туннель:
+
+```bash
+ssh -N -L 127.0.0.1:19001:127.0.0.1:9001 regru-vps
+```
+
+После этого консоль доступна администратору по `http://127.0.0.1:19001`.
+Для работы DVC этот туннель не нужен.
+
+`lenta-minio-certbot.timer` проверяет необходимость продления дважды в сутки.
+`renew_tls.sh` запускает закреплённый образ Certbot и после успешного завершения
+проверяет и перезагружает Nginx. Порт 80 обслуживает ACME HTTP-01 challenge;
+остальные HTTP-запросы перенаправляются на HTTPS.
+
+```bash
+systemctl status lenta-minio-certbot.timer
+systemctl start lenta-minio-certbot.service
+# Проверка продления через staging без замены рабочего сертификата:
+bash /opt/lenta-minio/https/renew_tls.sh --dry-run
+```
+
+После перехода со старого SSH-туннеля проверьте, что `.dvc/config.local` не
+перекрывает общий `endpointurl` значением `http://127.0.0.1:19000`.
+При необходимости задайте актуальный адрес локально:
+
+```bash
+dvc remote modify --local minio endpointurl https://31.31.207.108
+dvc remote modify --local minio use_ssl true
+dvc remote modify --local minio ssl_verify true
+```
+
+При использовании HTTP-прокси, который не пропускает HTTPS к IP-адресам,
+добавьте `31.31.207.108` в `NO_PROXY` для процесса DVC. SSH-ключи и секреты
+MinIO не должны попадать в Git.
